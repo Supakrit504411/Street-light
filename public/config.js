@@ -7,4 +7,4 @@
 // ⚠️ URL ต้องลงท้ายด้วย /exec
 // ============================================================
 
-window.GAS_URL = 'https://script.google.com/macros/s/REPLACE_WITH_YOUR_DEPLOYMENT_ID/exec';
+window.GAS_URL = 'https://script.google.com/macros/s/AKfycbz4joP8ykDbapNxDDyOtZyWiHDBNYS1CQAAzuHy6iABPxpUWOg7sWqPOnTexmDEmcg/exec';
