@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PEA Tracking</title>
+<script src="config.js"></script>
+<style>
+  :root {
+    --pea:       #1B5E20;
+    --pea-mid:   #2E7D32;
+    --pea-light: #4CAF50;
+    --pea-pale:  #E8F5E9;
+    --bg:        #F4F6F4;
+    --card:      #ffffff;
+    --text:      #1a1a1a;
+    --muted:     #6b7280;
+    --border:    rgba(0,0,0,0.08);
+    --r:         14px;
+    --r-sm:      8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html,body { height:100%; background:var(--bg); font-family:'Sarabun',-apple-system,sans-serif; color:var(--text); }
+
+  /* Shell */
+  #app { display:flex; flex-direction:column; height:100vh; max-width:480px; margin:0 auto; background:var(--bg); }
+
+  /* Topbar */
+  .topbar { background:var(--pea); flex-shrink:0; z-index:10; padding:env(safe-area-inset-top,0) 0 0; }
+  .topbar-inner { display:flex; align-items:center; justify-content:space-between; padding:14px 16px 12px; }
+  .topbar-brand { display:flex; align-items:center; gap:10px; }
+  .topbar-logo { width:34px;height:34px;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:var(--pea);letter-spacing:-1px; }
+  .topbar-title { color:#fff; font-size:16px; font-weight:600; line-height:1.1; }
+  .topbar-sub { color:rgba(255,255,255,.6); font-size:11px; margin-top:1px; }
+  .topbar-btn { width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px; }
+  .topbar-btn:active { background:rgba(255,255,255,.25); }
+
+  /* Tab Bar */
+  .tab-bar { display:flex; background:#fff; border-bottom:1px solid var(--border); flex-shrink:0; }
+  .tab-item { flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px 7px;font-size:10px;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;transition:all .15s;gap:2px;user-select:none; }
+  .tab-item svg { width:20px;height:20px;stroke-width:1.75; }
+  .tab-item.active { color:var(--pea); border-bottom-color:var(--pea); }
+
+  /* Pages */
+  .page { display:none; flex-direction:column; flex:1; overflow-y:auto; padding-bottom:24px; }
+  .page.active { display:flex; }
+
+  /* Summary */
+  .summary-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:14px 14px 0; }
+  .stat-card { background:var(--card);border-radius:var(--r-sm);padding:12px 14px;border:1px solid var(--border); }
+  .stat-card .num { font-size:26px;font-weight:600; }
+  .stat-card .lbl { font-size:12px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:5px; }
+  .dot { width:7px;height:7px;border-radius:50%;flex-shrink:0; }
+
+  /* Chips */
+  .filter-row { display:flex;gap:6px;padding:12px 14px 4px;overflow-x:auto;scrollbar-width:none; }
+  .filter-row::-webkit-scrollbar { display:none; }
+  .chip { white-space:nowrap;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;transition:all .15s;flex-shrink:0; }
+  .chip.active { background:var(--pea);color:#fff;border-color:var(--pea); }
+
+  /* Section hd */
+  .section-hd { padding:12px 14px 6px;font-size:13px;font-weight:600;color:var(--muted);display:flex;justify-content:space-between;align-items:center; }
+  .count-badge { background:var(--pea-pale);color:var(--pea-mid);font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600; }
+
+  /* Job Card */
+  .job-list { padding:0 14px;display:flex;flex-direction:column;gap:8px; }
+  .job-card { background:var(--card);border-radius:var(--r);padding:14px;border:1px solid var(--border);cursor:pointer;transition:transform .1s; }
+  .job-card:active { transform:scale(.99); }
+  .job-header { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px; }
+  .job-id { font-size:11px;color:var(--muted);margin-bottom:2px; }
+  .job-name { font-size:15px;font-weight:600; }
+  .status-badge { font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0; }
+  .job-meta { display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin-bottom:10px; }
+  .job-meta span { display:flex;align-items:center;gap:4px; }
+  .job-meta svg { width:13px;height:13px;flex-shrink:0; }
+
+  /* Progress */
+  .prog-bar { display:flex;gap:3px;margin-bottom:4px; }
+  .prog-seg { flex:1;height:3px;border-radius:2px;background:#e5e7eb; }
+  .prog-seg.done { background:var(--pea-mid); }
+  .prog-seg.active { background:var(--pea-light); }
+  .prog-labels { display:flex; }
+  .prog-lbl { flex:1;font-size:8.5px;text-align:center;color:#ccc;line-height:1.3; }
+  .prog-lbl.done { color:var(--pea-mid); }
+  .prog-lbl.active { color:var(--pea-light);font-weight:600; }
+
+  /* Status colors */
+  .s0{background:#EDE7F6;color:#4527A0} .s1{background:#FFF3E0;color:#E65100}
+  .s2{background:#E3F2FD;color:#1565C0} .s3{background:#FFF8E1;color:#F57F17}
+  .s4{background:#FCE4EC;color:#880E4F} .s5{background:#E8F5E9;color:#1B5E20}
+
+  /* Empty */
+  .empty { text-align:center;padding:48px 24px;color:var(--muted); }
+  .empty svg { width:48px;height:48px;margin:0 auto 12px;opacity:.3; }
+
+  /* Search */
+  .search-wrap { padding:12px 14px 0;position:relative; }
+  .search-input { width:100%;padding:10px 14px 10px 38px;border-radius:20px;border:1px solid var(--border);font-size:14px;font-family:inherit;background:var(--card);color:var(--text);outline:none; }
+  .search-icon { position:absolute;left:28px;top:50%;transform:translateY(-50%);opacity:.4; }
+  .search-icon svg { width:16px;height:16px; }
+
+  /* Form */
+  .form-page { padding:16px 14px;display:flex;flex-direction:column;gap:0; }
+  .form-section { background:var(--card);border-radius:var(--r);border:1px solid var(--border);overflow:hidden;margin-bottom:12px; }
+  .form-section-hd { padding:12px 16px;background:var(--pea-pale);font-size:13px;font-weight:600;color:var(--pea);display:flex;align-items:center;gap:6px; }
+  .form-section-hd svg { width:16px;height:16px; }
+  .form-row { padding:12px 16px;border-top:1px solid var(--border); }
+  .form-row:first-child { border-top:none; }
+  .form-label { font-size:12px;font-weight:500;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:4px; }
+  .form-label .req { color:#e53e3e; }
+  .form-input,.form-textarea,.form-select { width:100%;padding:10px 12px;border-radius:var(--r-sm);border:1px solid var(--border);font-size:14px;font-family:inherit;background:#fff;color:var(--text);outline:none;transition:border-color .15s; }
+  .form-input:focus,.form-textarea:focus { border-color:var(--pea); }
+  .form-textarea { resize:none;height:80px; }
+  .upload-area { border:1.5px dashed var(--border);border-radius:var(--r-sm);padding:20px 12px;text-align:center;cursor:pointer;color:var(--muted);font-size:13px;position:relative; }
+  .upload-area input[type=file] { position:absolute;inset:0;opacity:0;cursor:pointer; }
+  .upload-area svg { width:28px;height:28px;margin:0 auto 6px;display:block;opacity:.5; }
+  .upload-preview { margin-top:8px;display:flex;flex-wrap:wrap;gap:6px; }
+  .preview-chip { display:flex;align-items:center;gap:6px;background:var(--pea-pale);color:var(--pea);font-size:11px;padding:4px 10px;border-radius:20px; }
+  .preview-chip svg { width:12px;height:12px; }
+  .submit-btn { width:100%;padding:15px;border-radius:var(--r);border:none;background:var(--pea);color:#fff;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px; }
+  .submit-btn:active { background:var(--pea-mid); }
+  .submit-btn:disabled { background:#ccc;cursor:not-allowed; }
+  .submit-btn svg { width:18px;height:18px; }
+
+  /* Dashboard */
+  .dash-page { padding:14px;display:flex;flex-direction:column;gap:12px; }
+  .dash-card { background:var(--card);border-radius:var(--r);border:1px solid var(--border);overflow:hidden; }
+  .dash-card-hd { padding:12px 16px 10px;font-size:13px;font-weight:600;border-bottom:1px solid var(--border); }
+  .status-row { display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--border); }
+  .status-row:first-child { border-top:none; }
+  .status-dot { width:10px;height:10px;border-radius:50%;flex-shrink:0; }
+  .bar-track { flex:1;height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden; }
+  .bar-fill { height:100%;border-radius:2px;transition:width .4s ease; }
+  .status-num { font-size:14px;font-weight:600; }
+
+  /* Bottom Sheet */
+  .sheet-backdrop { position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;opacity:0;pointer-events:none;transition:opacity .25s; }
+  .sheet-backdrop.open { opacity:1;pointer-events:all; }
+  .bottom-sheet { position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:480px;background:var(--card);border-radius:20px 20px 0 0;z-index:101;transition:transform .3s cubic-bezier(.32,.72,0,1);max-height:90vh;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0); }
+  .bottom-sheet.open { transform:translateX(-50%) translateY(0); }
+  .sheet-handle { width:36px;height:4px;background:#e5e7eb;border-radius:2px;margin:12px auto 4px;flex-shrink:0; }
+  .sheet-header { padding:0 16px 0;flex-shrink:0; }
+  .sheet-title { font-size:17px;font-weight:700; }
+  .sheet-subtitle { font-size:12px;color:var(--muted);margin-top:2px; }
+
+  /* Sheet Tabs */
+  .sheet-tabs { display:flex;border-bottom:1px solid var(--border);margin:10px 0 0;flex-shrink:0; }
+  .sheet-tab { flex:1;text-align:center;padding:8px 4px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent; }
+  .sheet-tab.active { color:var(--pea);border-bottom-color:var(--pea); }
+
+  /* Sheet Content */
+  .sheet-body { overflow-y:auto;flex:1;padding:0 16px 16px; }
+  .detail-row { padding:11px 0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:3px; }
+  .detail-row:last-child { border-bottom:none; }
+  .detail-label { font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em; }
+  .detail-value { font-size:14px; }
+
+  /* Log Timeline */
+  .log-timeline { padding:12px 0; }
+  .log-item { display:flex;gap:12px;padding-bottom:16px;position:relative; }
+  .log-item:not(:last-child)::before { content:'';position:absolute;left:15px;top:32px;bottom:0;width:1.5px;background:var(--border); }
+  .log-dot { width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:700; }
+  .log-content { flex:1; }
+  .log-arrow { font-size:11px;font-weight:600;color:var(--text);margin-bottom:2px; }
+  .log-arrow .arrow-from { text-decoration:line-through;color:var(--muted); }
+  .log-meta { font-size:11px;color:var(--muted);margin-bottom:4px; }
+  .log-note { font-size:12px;color:var(--text);background:var(--bg);border-radius:6px;padding:6px 10px;margin-top:4px; }
+  .log-file { font-size:11px;color:var(--pea);margin-top:4px; }
+
+  /* Step Form (inside bottom sheet, for status advance) */
+  .step-form { padding:14px 0 0; }
+  .step-form .form-label { font-size:12px;font-weight:500;color:var(--muted);margin-bottom:6px; }
+  .step-form .form-input,.step-form .form-textarea { width:100%;padding:10px 12px;border-radius:var(--r-sm);border:1px solid var(--border);font-size:14px;font-family:inherit;background:#fff;color:var(--text);outline:none;margin-bottom:10px; }
+  .step-form .form-textarea { height:70px;resize:none; }
+  .step-form .upload-area { margin-bottom:10px; }
+  .step-btn-row { display:flex;gap:8px;padding:12px 16px 8px;flex-shrink:0;border-top:1px solid var(--border); }
+  .step-btn { flex:1;padding:12px;border-radius:var(--r-sm);border:1px solid var(--border);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:var(--card);color:var(--text); }
+  .step-btn.primary { background:var(--pea);color:#fff;border-color:var(--pea); }
+  .step-btn:active { transform:scale(.98); }
+  .step-btn:disabled { opacity:.4;cursor:not-allowed; }
+
+  /* Confirm Dialog */
+  .dialog-backdrop { position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;padding-bottom:env(safe-area-inset-bottom,0); }
+  .dialog-backdrop.open { opacity:1;pointer-events:all; }
+  .dialog-box { background:var(--card);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 20px 28px;transform:translateY(40px);transition:transform .25s cubic-bezier(.32,.72,0,1); }
+  .dialog-backdrop.open .dialog-box { transform:translateY(0); }
+  .dialog-icon { width:48px;height:48px;border-radius:50%;background:var(--pea-pale);display:flex;align-items:center;justify-content:center;margin:0 auto 12px; }
+  .dialog-icon svg { width:24px;height:24px;stroke:var(--pea); }
+  .dialog-title { font-size:16px;font-weight:700;text-align:center;margin-bottom:6px; }
+  .dialog-desc { font-size:13px;color:var(--muted);text-align:center;line-height:1.6;margin-bottom:18px; }
+  .dialog-summary { background:var(--bg);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:18px;font-size:12px; }
+  .dialog-summary-row { display:flex;justify-content:space-between;padding:3px 0; }
+  .dialog-summary-row .k { color:var(--muted); }
+  .dialog-summary-row .v { font-weight:500; }
+  .dialog-btns { display:flex;gap:10px; }
+  .dialog-btn { flex:1;padding:13px;border-radius:var(--r-sm);font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--text); }
+  .dialog-btn.confirm { background:var(--pea);color:#fff;border-color:var(--pea); }
+  .dialog-btn:active { transform:scale(.98); }
+
+  /* Toast */
+  .toast { position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:500;z-index:300;opacity:0;transition:all .25s;white-space:nowrap;max-width:90vw; }
+  .toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
+  .toast.success { background:var(--pea); }
+  .toast.error { background:#c62828; }
+
+  /* Spinner */
+  .spinner { width:18px;height:18px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:none; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  /* Skeleton */
+  .skeleton { background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:6px; }
+  @keyframes shimmer { to{background-position:-200% 0} }
+
+  /* Advanced Filter Panel */
+  .adv-filter-btn { display:flex;align-items:center;gap:6px;margin:8px 14px 0;padding:8px 14px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--card);font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;width:fit-content; }
+  .adv-filter-btn.has-filter { border-color:var(--pea);color:var(--pea);background:var(--pea-pale); }
+  .adv-filter-btn svg { width:14px;height:14px; }
+  .filter-panel { background:var(--card);border-radius:var(--r);border:1px solid var(--border);margin:8px 14px 0;overflow:hidden;display:none; }
+  .filter-panel.open { display:block; }
+  .filter-panel-hd { padding:10px 14px;font-size:12px;font-weight:600;color:var(--muted);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center; }
+  .filter-panel-body { padding:12px 14px;display:flex;flex-direction:column;gap:10px; }
+  .filter-group { display:flex;flex-direction:column;gap:4px; }
+  .filter-group label { font-size:11px;font-weight:600;color:var(--muted); }
+  .filter-group input,.filter-group select { padding:8px 10px;border-radius:var(--r-sm);border:1px solid var(--border);font-size:13px;font-family:inherit;background:#fff;color:var(--text);outline:none;width:100%; }
+  .filter-group input:focus,.filter-group select:focus { border-color:var(--pea); }
+  .filter-date-row { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+  .filter-actions { display:flex;gap:8px;padding:0 14px 12px; }
+  .filter-apply { flex:2;padding:9px;border-radius:var(--r-sm);border:none;background:var(--pea);color:#fff;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer; }
+  .filter-clear { flex:1;padding:9px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:13px;font-family:inherit;cursor:pointer; }
+
+  /* KPI Dashboard */
+  .kpi-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:14px 14px 0; }
+  .kpi-card { background:var(--card);border-radius:var(--r-sm);padding:12px 14px;border:1px solid var(--border); }
+  .kpi-card .kpi-num { font-size:22px;font-weight:600; }
+  .kpi-card .kpi-label { font-size:11px;color:var(--muted);margin-top:2px; }
+  .kpi-card .kpi-sub { font-size:10px;margin-top:4px; }
+  .overdue-list { }
+  .overdue-item { display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border); }
+  .overdue-item:last-child { border-bottom:none; }
+  .overdue-name { font-size:13px;font-weight:500; }
+  .overdue-meta { font-size:11px;color:var(--muted);margin-top:1px; }
+  .overdue-days { font-size:12px;font-weight:600;color:#c62828;background:#FFEBEE;padding:2px 8px;border-radius:10px; }
+  .assignee-row { display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border); }
+  .assignee-row:last-child { border-bottom:none; }
+  .assignee-avatar { width:32px;height:32px;border-radius:50%;background:var(--pea-pale);color:var(--pea);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0; }
+  .assignee-name { flex:1;font-size:13px;font-weight:500; }
+  .assignee-count { font-size:12px;color:var(--muted); }
+  .assignee-done { font-size:11px;font-weight:600;color:var(--pea);background:var(--pea-pale);padding:2px 8px;border-radius:10px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-brand">
+        <div class="topbar-logo">PEA</div>
+        <div>
+          <div class="topbar-title">PEA Tracking</div>
+          <div class="topbar-sub">การไฟฟ้าส่วนภูมิภาค</div>
+        </div>
+      </div>
+      <button class="topbar-btn" onclick="loadData()" title="รีเฟรช">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <div class="tab-item active" onclick="switchTab('list',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>รายการงาน
+    </div>
+    <div class="tab-item" onclick="switchTab('add',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>เพิ่มงาน
+    </div>
+    <div class="tab-item" onclick="switchTab('dash',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>ภาพรวม
+    </div>
+    <div class="tab-item" onclick="switchTab('kpi',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>KPI
+    </div>
+  </div>
+
+  <!-- PAGE: LIST -->
+  <div class="page active" id="page-list">
+    <div class="search-wrap">
+      <div class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+      <input class="search-input" id="searchInput" placeholder="ค้นหาชื่อ, เลขงาน, ผู้รับผิดชอบ..." oninput="renderList()">
+    </div>
+
+    <!-- Advanced Filter Toggle -->
+    <button class="adv-filter-btn" id="advFilterBtn" onclick="toggleFilterPanel()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      <span id="advFilterLabel">กรอง</span>
+    </button>
+
+    <!-- Filter Panel -->
+    <div class="filter-panel" id="filterPanel">
+      <div class="filter-panel-hd">
+        <span>กรองขั้นสูง</span>
+        <span style="font-size:11px;cursor:pointer;color:var(--pea)" onclick="clearAdvFilter()">ล้างทั้งหมด</span>
+      </div>
+      <div class="filter-panel-body">
+        <div class="filter-group">
+          <label>ผู้รับผิดชอบ</label>
+          <select id="f-assignee-filter" onchange="renderList()">
+            <option value="">— ทั้งหมด —</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>ช่วงวันที่สร้างงาน</label>
+          <div class="filter-date-row">
+            <input type="date" id="f-date-from" onchange="renderList()" placeholder="จากวันที่">
+            <input type="date" id="f-date-to" onchange="renderList()" placeholder="ถึงวันที่">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="summary-grid">
+      <div class="stat-card"><div class="num" id="cnt-total">—</div><div class="lbl"><span class="dot" style="background:#888"></span>งานทั้งหมด</div></div>
+      <div class="stat-card"><div class="num" id="cnt-active" style="color:#E65100">—</div><div class="lbl"><span class="dot" style="background:#E65100"></span>กำลังดำเนินการ</div></div>
+      <div class="stat-card"><div class="num" id="cnt-done" style="color:var(--pea)">—</div><div class="lbl"><span class="dot" style="background:var(--pea)"></span>จ่ายไฟแล้ว</div></div>
+      <div class="stat-card"><div class="num" id="cnt-today" style="color:#1565C0">—</div><div class="lbl"><span class="dot" style="background:#1565C0"></span>วันนี้</div></div>
+    </div>
+    <div class="filter-row" id="filterChips">
+      <div class="chip active" onclick="setFilter('all',this)">ทั้งหมด</div>
+      <div class="chip" onclick="setFilter('รับคำร้อง',this)">รับคำร้อง</div>
+      <div class="chip" onclick="setFilter('ก่อสร้าง',this)">ก่อสร้าง</div>
+      <div class="chip" onclick="setFilter('เชื่อมระบบ',this)">เชื่อมระบบ</div>
+      <div class="chip" onclick="setFilter('ตรวจมาตรฐาน',this)">ตรวจมาตรฐาน</div>
+      <div class="chip" onclick="setFilter('ติดตั้งมิเตอร์',this)">ติดตั้งมิเตอร์</div>
+      <div class="chip" onclick="setFilter('จ่ายไฟ',this)">จ่ายไฟ</div>
+    </div>
+    <div class="section-hd"><span>รายการงาน</span><span class="count-badge" id="listCount">0 งาน</span></div>
+    <div class="job-list" id="jobList">
+      <div style="background:#fff;border-radius:14px;padding:14px;border:1px solid rgba(0,0,0,.08)">
+        <div class="skeleton" style="height:12px;width:40%;margin-bottom:8px"></div>
+        <div class="skeleton" style="height:16px;width:65%;margin-bottom:10px"></div>
+        <div class="skeleton" style="height:3px;width:100%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: ADD -->
+  <div class="page" id="page-add">
+    <div class="form-page">
+      <div class="form-section">
+        <div class="form-section-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>ข้อมูลผู้ขอ</div>
+        <div class="form-row"><div class="form-label">ชื่อ-นามสกุล <span class="req">*</span></div><input class="form-input" id="f-name" placeholder="เช่น นายสมชาย ใจดี"></div>
+        <div class="form-row"><div class="form-label">เบอร์โทรศัพท์ <span class="req">*</span></div><input class="form-input" id="f-phone" type="tel" placeholder="0XX-XXX-XXXX"></div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>รายละเอียดงาน</div>
+        <div class="form-row"><div class="form-label">รายละเอียด <span class="req">*</span></div><textarea class="form-textarea" id="f-detail" placeholder="อธิบายงานที่ต้องทำ..."></textarea></div>
+        <div class="form-row"><div class="form-label">ผู้รับผิดชอบ</div><input class="form-input" id="f-assignee" placeholder="ชื่อช่าง / เจ้าหน้าที่"></div>
+        <div class="form-row"><div class="form-label">หมายเหตุ</div><input class="form-input" id="f-note" placeholder="ข้อมูลเพิ่มเติม"></div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>รูปภาพ</div>
+        <div class="form-row">
+          <div class="upload-area"><input type="file" accept="image/*" capture="environment" id="imgInput" onchange="handleFileSelect(event,'img')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><div>แตะเพื่อถ่ายภาพ / เลือกรูป</div><div style="font-size:11px;margin-top:3px;opacity:.7">JPG, PNG ไม่เกิน 10MB</div></div>
+          <div class="upload-preview" id="imgPreview"></div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>ไฟล์แนบ (PDF)</div>
+        <div class="form-row">
+          <div class="upload-area"><input type="file" accept=".pdf,.doc,.docx" id="pdfInput" onchange="handleFileSelect(event,'pdf')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><div>แตะเพื่อเลือกไฟล์</div><div style="font-size:11px;margin-top:3px;opacity:.7">PDF, DOC ไม่เกิน 20MB</div></div>
+          <div class="upload-preview" id="pdfPreview"></div>
+        </div>
+      </div>
+      <button class="submit-btn" id="submitBtn" onclick="submitJob()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <span id="submitText">บันทึกงานใหม่</span>
+        <div class="spinner" id="submitSpinner"></div>
+      </button>
+    </div>
+  </div>
+
+  <!-- PAGE: DASHBOARD -->
+  <div class="page" id="page-dash">
+    <div class="dash-page">
+      <div class="dash-card">
+        <div class="dash-card-hd">สถานะงานทั้งหมด</div>
+        <div id="dashStatusList"><div style="padding:20px;text-align:center;color:#999;font-size:13px">กำลังโหลด...</div></div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-hd">งานล่าสุด</div>
+        <div id="recentList"><div style="padding:20px;text-align:center;color:#999;font-size:13px">กำลังโหลด...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: KPI -->
+  <div class="page" id="page-kpi">
+    <div class="dash-page">
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-num" id="kpi-total">—</div>
+          <div class="kpi-label">งานทั้งหมด</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-num" id="kpi-done" style="color:var(--pea)">—</div>
+          <div class="kpi-label">จ่ายไฟแล้ว</div>
+          <div class="kpi-sub" id="kpi-done-pct" style="color:var(--pea)"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-num" id="kpi-overdue" style="color:#c62828">—</div>
+          <div class="kpi-label">ค้างเกิน 7 วัน</div>
+          <div class="kpi-sub" style="color:#c62828">ต้องเร่งดำเนินการ</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-num" id="kpi-this-month" style="color:#1565C0">—</div>
+          <div class="kpi-label">งานเดือนนี้</div>
+          <div class="kpi-sub" id="kpi-month-label" style="color:#1565C0"></div>
+        </div>
+      </div>
+
+      <!-- Overdue Jobs -->
+      <div class="dash-card">
+        <div class="dash-card-hd" style="display:flex;justify-content:space-between;align-items:center">
+          <span>งานค้าง (เกิน 7 วัน)</span>
+          <span id="overdue-badge" class="count-badge">0</span>
+        </div>
+        <div class="overdue-list" id="overdueList">
+          <div style="padding:16px;text-align:center;color:#999;font-size:13px">กำลังโหลด...</div>
+        </div>
+      </div>
+
+      <!-- Performance by Assignee -->
+      <div class="dash-card">
+        <div class="dash-card-hd">Performance ของช่าง</div>
+        <div id="assigneeList">
+          <div style="padding:16px;text-align:center;color:#999;font-size:13px">กำลังโหลด...</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<!-- ═══ Bottom Sheet: Job Detail ═══ -->
+<div class="sheet-backdrop" id="backdrop" onclick="closeSheet()"></div>
+<div class="bottom-sheet" id="jobSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title" id="sheetName">—</div>
+    <div class="sheet-subtitle" id="sheetSub">—</div>
+    <div class="sheet-tabs">
+      <div class="sheet-tab active" onclick="switchSheetTab('detail',this)">รายละเอียด</div>
+      <div class="sheet-tab" onclick="switchSheetTab('step',this)">เปลี่ยนสถานะ</div>
+      <div class="sheet-tab" onclick="switchSheetTab('log',this)">ประวัติ</div>
+    </div>
+  </div>
+  <!-- Tab: Detail -->
+  <div class="sheet-body" id="tabDetail"></div>
+  <!-- Tab: Step Form -->
+  <div class="sheet-body" id="tabStep" style="display:none">
+    <div class="step-form">
+      <div class="form-label">ผู้รับผิดชอบ (สำหรับขั้นตอนนี้)</div>
+      <input class="form-input" id="step-assignee" placeholder="ชื่อช่าง / เจ้าหน้าที่">
+      <div class="form-label" style="margin-top:4px">หมายเหตุ</div>
+      <textarea class="form-textarea" id="step-note" placeholder="บันทึกการดำเนินการ..."></textarea>
+      <div class="form-label" style="margin-top:4px">ไฟล์แนบ (ถ้ามี)</div>
+      <div class="upload-area" style="margin-bottom:8px">
+        <input type="file" id="step-file" onchange="handleStepFile(event)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:24px;height:24px;margin:0 auto 4px;display:block;opacity:.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div style="font-size:12px">แตะเพื่อแนบไฟล์</div>
+      </div>
+      <div id="step-file-preview" class="upload-preview" style="margin-bottom:12px"></div>
+    </div>
+  </div>
+  <!-- Tab: Log -->
+  <div class="sheet-body" id="tabLog" style="display:none">
+    <div id="logContent"><div style="padding:20px;text-align:center;color:#999;font-size:13px">กำลังโหลด...</div></div>
+  </div>
+  <!-- Step Buttons (shown only on step tab) -->
+  <div class="step-btn-row" id="stepBtnRow" style="display:none">
+    <button class="step-btn" id="btnPrev" onclick="requestChangeStatus(-1)">← ย้อนกลับ</button>
+    <button class="step-btn primary" id="btnNext" onclick="requestChangeStatus(1)">ขั้นถัดไป →</button>
+  </div>
+</div>
+
+<!-- ═══ Confirm Dialog ═══ -->
+<div class="dialog-backdrop" id="confirmDialog">
+  <div class="dialog-box">
+    <div class="dialog-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+    </div>
+    <div class="dialog-title" id="dlgTitle">ยืนยันการบันทึก</div>
+    <div class="dialog-desc" id="dlgDesc">คุณต้องการบันทึกการเปลี่ยนแปลงนี้?</div>
+    <div class="dialog-summary" id="dlgSummary"></div>
+    <div class="dialog-btns">
+      <button class="dialog-btn" onclick="closeConfirm()">ยกเลิก</button>
+      <button class="dialog-btn confirm" id="dlgConfirmBtn" onclick="confirmAction()">
+        <span id="dlgConfirmText">ยืนยัน บันทึก</span>
+        <div class="spinner" id="dlgSpinner" style="display:inline-block;vertical-align:middle;margin-left:6px"></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════
+// Constants & State
+// ════════════════════════════════════════
+const STATUSES = ['รับคำร้อง','ก่อสร้าง','เชื่อมระบบ','ตรวจมาตรฐาน','ติดตั้งมิเตอร์','จ่ายไฟ'];
+const STATUS_CLASS = ['s0','s1','s2','s3','s4','s5'];
+const STATUS_COLOR = ['#7C3AED','#EA580C','#2563EB','#D97706','#DB2777','#16A34A'];
+const LOG_DOT_BG   = ['#EDE7F6','#FFF3E0','#E3F2FD','#FFF8E1','#FCE4EC','#E8F5E9'];
+
+let allJobs = [];
+let currentFilter = 'all';
+let selectedJob = null;
+let pendingImg = null;
+let pendingPdf = null;
+let pendingStepFile = null;
+let confirmCallback = null;
+let currentSheetTab = 'detail';
+
+// ════════════════════════════════════════
+// GAS API — แทน google.script.run ทั้งหมด
+// ส่ง POST { action, ...params } → GAS doPost
+// ════════════════════════════════════════
+async function gasAPI(action, params = {}) {
+  const url = window.GAS_URL;
+  if (!url || url.includes('REPLACE_WITH')) {
+    throw new Error('กรุณาตั้งค่า GAS_URL ใน config.js ก่อนใช้งาน');
+  }
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' }, // GAS ต้องการ text/plain เพื่อหลีกเลี่ยง CORS preflight
+    body: JSON.stringify({ action, ...params })
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+// ════════════════════════════════════════
+// Init
+// ════════════════════════════════════════
+window.onload = () => loadData();
+
+async function loadData() {
+  try {
+    const res = await gasAPI('getData');
+    if (res.success) {
+      allJobs = res.data;
+      populateAssigneeDropdown();
+      renderList(); renderDash(); updateSummary(); renderKPI();
+    } else showToast('โหลดข้อมูลไม่สำเร็จ', 'error');
+  } catch(e) { showToast('เกิดข้อผิดพลาด: ' + e.message, 'error'); }
+}
+
+// ════════════════════════════════════════
+// Tab Switching
+// ════════════════════════════════════════
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-' + tab).classList.add('active');
+  if (tab === 'kpi') renderKPI();
+}
+
+// ════════════════════════════════════════
+// Status Filter Chips
+// ════════════════════════════════════════
+function setFilter(val, el) {
+  currentFilter = val;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+}
+
+// ════════════════════════════════════════
+// Advanced Filter Panel
+// ════════════════════════════════════════
+function toggleFilterPanel() {
+  const panel = document.getElementById('filterPanel');
+  panel.classList.toggle('open');
+}
+
+function populateAssigneeDropdown() {
+  const sel = document.getElementById('f-assignee-filter');
+  const names = [...new Set(allJobs.map(j => j.assignee).filter(Boolean))].sort();
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— ทั้งหมด —</option>' +
+    names.map(n => `<option value="${n}" ${n===current?'selected':''}>${n}</option>`).join('');
+}
+
+function clearAdvFilter() {
+  document.getElementById('f-assignee-filter').value = '';
+  document.getElementById('f-date-from').value = '';
+  document.getElementById('f-date-to').value = '';
+  document.getElementById('advFilterBtn').classList.remove('has-filter');
+  document.getElementById('advFilterLabel').textContent = 'กรอง';
+  renderList();
+}
+
+// parse "dd/MM/yyyy" → Date
+function parseThaiDate(str) {
+  if (!str) return null;
+  const [d, m, y] = str.split('/');
+  return new Date(+y, +m - 1, +d);
+}
+
+// ════════════════════════════════════════
+// Render List
+// ════════════════════════════════════════
+function renderList() {
+  const q          = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+  const assigneeF  = document.getElementById('f-assignee-filter').value;
+  const dateFrom   = document.getElementById('f-date-from').value;   // yyyy-mm-dd
+  const dateTo     = document.getElementById('f-date-to').value;
+
+  const hasAdv = assigneeF || dateFrom || dateTo;
+  document.getElementById('advFilterBtn').classList.toggle('has-filter', !!hasAdv);
+  document.getElementById('advFilterLabel').textContent = hasAdv ? 'กรองอยู่ ✕' : 'กรอง';
+
+  let jobs = allJobs.filter(j => {
+    // Status chip filter
+    if (currentFilter !== 'all' && j.status !== currentFilter) return false;
+    // Text search
+    if (q && !(j.name.toLowerCase().includes(q) || j.id.toLowerCase().includes(q)
+              || j.assignee.toLowerCase().includes(q) || j.phone.includes(q))) return false;
+    // Assignee filter
+    if (assigneeF && j.assignee !== assigneeF) return false;
+    // Date range filter
+    const jDate = parseThaiDate(j.date);
+    if (dateFrom && jDate) {
+      const from = new Date(dateFrom);
+      if (jDate < from) return false;
+    }
+    if (dateTo && jDate) {
+      const to = new Date(dateTo);
+      to.setHours(23,59,59);
+      if (jDate > to) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('listCount').textContent = jobs.length + ' งาน';
+  const el = document.getElementById('jobList');
+  if (!jobs.length) {
+    el.innerHTML = `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg><p>ไม่พบรายการงาน</p></div>`;
+    return;
+  }
+  el.innerHTML = jobs.map(j => jobCardHTML(j)).join('');
+}
+
+function jobCardHTML(j) {
+  const si = STATUSES.indexOf(j.status);
+  const sc = si >= 0 ? STATUS_CLASS[si] : 's0';
+  const bars = STATUSES.map((_,i) => `<div class="prog-seg ${i<si?'done':i===si?'active':''}"></div>`).join('');
+  const lbls = STATUSES.map((s,i) => {
+    const sh = s.replace('ติดตั้ง','').replace('ตรวจมาตรฐาน','ตรวจ');
+    return `<div class="prog-lbl ${i<si?'done':i===si?'active':''}">${sh}</div>`;
+  }).join('');
+  return `<div class="job-card" onclick="openSheet('${j.id}')">
+    <div class="job-header">
+      <div><div class="job-id">${j.id}</div><div class="job-name">${j.name}</div></div>
+      <span class="status-badge ${sc}">${j.status}</span>
+    </div>
+    <div class="job-meta">
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.27 12 19.79 19.79 0 0 1 1.11 3.41 2 2 0 0 1 3.09 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16z"/></svg>${j.phone}</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${j.date}</span>
+      ${j.assignee?`<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${j.assignee}</span>`:''}
+    </div>
+    <div><div class="prog-bar">${bars}</div><div class="prog-labels">${lbls}</div></div>
+  </div>`;
+}
+
+// ════════════════════════════════════════
+// Summary
+// ════════════════════════════════════════
+function updateSummary() {
+  const today = new Date();
+  const todayStr = `${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}/${today.getFullYear()}`;
+  document.getElementById('cnt-total').textContent = allJobs.length;
+  document.getElementById('cnt-active').textContent = allJobs.filter(j => j.status !== 'จ่ายไฟ').length;
+  document.getElementById('cnt-done').textContent = allJobs.filter(j => j.status === 'จ่ายไฟ').length;
+  document.getElementById('cnt-today').textContent = allJobs.filter(j => j.date === todayStr).length;
+}
+
+// ════════════════════════════════════════
+// Dashboard
+// ════════════════════════════════════════
+function renderDash() {
+  const total = allJobs.length || 1;
+  document.getElementById('dashStatusList').innerHTML = STATUSES.map((s,i) => {
+    const cnt = allJobs.filter(j => j.status === s).length;
+    const pct = Math.round((cnt/total)*100);
+    return `<div class="status-row">
+      <div class="status-dot" style="background:${STATUS_COLOR[i]}"></div>
+      <div style="flex:1;font-size:13px">${s}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${STATUS_COLOR[i]}"></div></div>
+      <div class="status-num">${cnt}</div></div>`;
+  }).join('');
+  const recent = [...allJobs].slice(-8).reverse();
+  document.getElementById('recentList').innerHTML = !recent.length
+    ? '<div style="padding:16px;text-align:center;color:#999;font-size:13px">ยังไม่มีงาน</div>'
+    : recent.map(j => {
+        const si = STATUSES.indexOf(j.status);
+        const sc = si>=0 ? STATUS_CLASS[si] : 's0';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(0,0,0,.05)">
+          <div><div style="font-size:13px;font-weight:500">${j.name}</div><div style="font-size:11px;color:#9ca3af">${j.id} · ${j.date}</div></div>
+          <span class="status-badge ${sc}">${j.status}</span></div>`;
+      }).join('');
+}
+
+// ════════════════════════════════════════
+// KPI Dashboard
+// ════════════════════════════════════════
+function renderKPI() {
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear  = now.getFullYear();
+
+  const total  = allJobs.length;
+  const done   = allJobs.filter(j => j.status === 'จ่ายไฟ').length;
+  const donePct = total ? Math.round((done/total)*100) : 0;
+
+  // งานเดือนนี้ (ดูจาก date dd/MM/yyyy)
+  const thisMonthJobs = allJobs.filter(j => {
+    const d = parseThaiDate(j.date);
+    return d && d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+  });
+
+  // งานค้างเกิน 7 วัน (ยังไม่ถึง จ่ายไฟ)
+  const OVERDUE_DAYS = 7;
+  const overdueJobs = allJobs.filter(j => {
+    if (j.status === 'จ่ายไฟ') return false;
+    const d = parseThaiDate(j.date);
+    if (!d) return false;
+    const diffDays = Math.floor((now - d) / (1000*60*60*24));
+    return diffDays > OVERDUE_DAYS;
+  }).sort((a,b) => parseThaiDate(a.date) - parseThaiDate(b.date)); // เก่าสุดก่อน
+
+  // Performance by assignee
+  const assigneeMap = {};
+  allJobs.forEach(j => {
+    const name = j.assignee || '(ไม่ระบุ)';
+    if (!assigneeMap[name]) assigneeMap[name] = { total:0, done:0 };
+    assigneeMap[name].total++;
+    if (j.status === 'จ่ายไฟ') assigneeMap[name].done++;
+  });
+  const assignees = Object.entries(assigneeMap)
+    .map(([name, v]) => ({ name, ...v }))
+    .sort((a,b) => b.total - a.total);
+
+  const thMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  // Update KPI cards
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-done').textContent  = done;
+  document.getElementById('kpi-done-pct').textContent = donePct + '% ของทั้งหมด';
+  document.getElementById('kpi-overdue').textContent = overdueJobs.length;
+  document.getElementById('kpi-this-month').textContent = thisMonthJobs.length;
+  document.getElementById('kpi-month-label').textContent = thMonths[thisMonth] + ' ' + (thisYear+543);
+  document.getElementById('overdue-badge').textContent = overdueJobs.length;
+
+  // Overdue list
+  document.getElementById('overdueList').innerHTML = !overdueJobs.length
+    ? '<div style="padding:16px;text-align:center;color:#999;font-size:13px">✓ ไม่มีงานค้าง</div>'
+    : overdueJobs.map(j => {
+        const d = parseThaiDate(j.date);
+        const diffDays = Math.floor((now - d) / (1000*60*60*24));
+        const si = STATUSES.indexOf(j.status);
+        const sc = si>=0 ? STATUS_CLASS[si] : 's0';
+        return `<div class="overdue-item" onclick="openSheet('${j.id}')">
+          <div>
+            <div class="overdue-name">${j.name}</div>
+            <div class="overdue-meta">${j.id} · <span class="status-badge ${sc}" style="font-size:9px">${j.status}</span></div>
+          </div>
+          <div class="overdue-days">+${diffDays} วัน</div>
+        </div>`;
+      }).join('');
+
+  // Assignee performance
+  document.getElementById('assigneeList').innerHTML = !assignees.length
+    ? '<div style="padding:16px;text-align:center;color:#999;font-size:13px">ยังไม่มีข้อมูล</div>'
+    : assignees.map(a => {
+        const pct = a.total ? Math.round((a.done/a.total)*100) : 0;
+        const initials = a.name.replace('ช่าง','').trim().slice(0,2).toUpperCase();
+        return `<div class="assignee-row">
+          <div class="assignee-avatar">${initials}</div>
+          <div style="flex:1">
+            <div class="assignee-name">${a.name}</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+              <div class="bar-track" style="flex:1"><div class="bar-fill" style="width:${pct}%;background:var(--pea)"></div></div>
+              <span style="font-size:10px;color:var(--muted);white-space:nowrap">${pct}%</span>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div class="assignee-done">${a.done}/${a.total}</div>
+            <div class="assignee-count" style="margin-top:2px">งานทั้งหมด</div>
+          </div>
+        </div>`;
+      }).join('');
+}
+
+// ════════════════════════════════════════
+// Bottom Sheet
+// ════════════════════════════════════════
+function openSheet(jobId) {
+  selectedJob = allJobs.find(j => j.id === jobId);
+  if (!selectedJob) return;
+  currentSheetTab = 'detail';
+  // reset step form
+  document.getElementById('step-assignee').value = selectedJob.assignee || '';
+  document.getElementById('step-note').value = '';
+  document.getElementById('step-file-preview').innerHTML = '';
+  pendingStepFile = null;
+  renderSheetHeader();
+  switchSheetTab('detail', document.querySelectorAll('.sheet-tab')[0]);
+  document.getElementById('backdrop').classList.add('open');
+  document.getElementById('jobSheet').classList.add('open');
+}
+
+function closeSheet() {
+  document.getElementById('backdrop').classList.remove('open');
+  document.getElementById('jobSheet').classList.remove('open');
+}
+
+function renderSheetHeader() {
+  const j = selectedJob;
+  document.getElementById('sheetName').textContent = j.name;
+  document.getElementById('sheetSub').textContent = j.id + ' · อัปเดต: ' + (j.updatedDate || j.date);
+}
+
+function switchSheetTab(tab, el) {
+  currentSheetTab = tab;
+  document.querySelectorAll('.sheet-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tabDetail').style.display = tab==='detail' ? 'block' : 'none';
+  document.getElementById('tabStep').style.display   = tab==='step'   ? 'block' : 'none';
+  document.getElementById('tabLog').style.display    = tab==='log'    ? 'block' : 'none';
+  document.getElementById('stepBtnRow').style.display = tab==='step'  ? 'flex'  : 'none';
+
+  if (tab === 'detail') renderDetailTab();
+  if (tab === 'step')   renderStepTab();
+  if (tab === 'log')    loadLog();
+}
+
+function renderDetailTab() {
+  const j = selectedJob;
+  const si = STATUSES.indexOf(j.status);
+  const sc = si>=0 ? STATUS_CLASS[si] : 's0';
+  const rows = [
+    ['สถานะ',         `<span class="status-badge ${sc}">${j.status}</span>`],
+    ['เบอร์โทร',     `<a href="tel:${j.phone}" style="color:var(--pea)">${j.phone}</a>`],
+    ['รายละเอียด',   j.detail  || '—'],
+    ['ผู้รับผิดชอบ', j.assignee || '—'],
+    ['หมายเหตุ',     j.note    || '—'],
+    ['วันที่สร้าง',  j.date    || '—'],
+  ].map(([l,v]) => `<div class="detail-row"><div class="detail-label">${l}</div><div class="detail-value">${v}</div></div>`).join('');
+  const imgHtml  = j.imageUrl ? `<div class="detail-row"><div class="detail-label">รูปภาพ</div><a href="${j.imageUrl}" target="_blank" style="color:var(--pea);font-size:13px">ดูรูปภาพ ↗</a></div>` : '';
+  const fileHtml = j.fileUrl  ? j.fileUrl.split('\n').map((u,i) => `<div class="detail-row"><div class="detail-label">ไฟล์แนบ ${i+1}</div><a href="${u}" target="_blank" style="color:var(--pea);font-size:13px">ดูไฟล์ ↗</a></div>`).join('') : '';
+  document.getElementById('tabDetail').innerHTML = rows + imgHtml + fileHtml;
+}
+
+function renderStepTab() {
+  const j = selectedJob;
+  const si = STATUSES.indexOf(j.status);
+  const btnPrev = document.getElementById('btnPrev');
+  const btnNext = document.getElementById('btnNext');
+  btnPrev.disabled = si <= 0;
+  btnNext.disabled = si >= STATUSES.length - 1;
+  btnNext.textContent = si >= STATUSES.length - 1 ? '✓ เสร็จสิ้นแล้ว' : `→ ${STATUSES[si+1]}`;
+  btnPrev.textContent = si <= 0 ? '← (เริ่มต้นแล้ว)' : `← ${STATUSES[si-1]}`;
+}
+
+// ════════════════════════════════════════
+// Load Log
+// ════════════════════════════════════════
+async function loadLog() {
+  document.getElementById('logContent').innerHTML = '<div style="padding:20px;text-align:center;color:#999;font-size:13px">กำลังโหลด...</div>';
+  try {
+    const res = await gasAPI('getLog', { jobId: selectedJob.id });
+    if (res.success) renderLog(res.data);
+    else document.getElementById('logContent').innerHTML = '<div style="padding:16px;color:#999;font-size:13px">โหลด log ไม่สำเร็จ</div>';
+  } catch(e) {
+    document.getElementById('logContent').innerHTML = '<div style="padding:16px;color:#999;font-size:13px">เกิดข้อผิดพลาด</div>';
+  }
+}
+
+function renderLog(logs) {
+  if (!logs.length) {
+    document.getElementById('logContent').innerHTML = '<div style="padding:24px;text-align:center;color:#999;font-size:13px">ยังไม่มีประวัติการดำเนินการ</div>';
+    return;
+  }
+  const html = `<div class="log-timeline">` + logs.map(l => {
+    const toSi = STATUSES.indexOf(l.toStatus);
+    const col  = toSi >= 0 ? STATUS_COLOR[toSi] : '#888';
+    const bg   = toSi >= 0 ? LOG_DOT_BG[toSi]  : '#f3f4f6';
+    const arrow = l.fromStatus
+      ? `<span class="arrow-from">${l.fromStatus}</span> → <strong>${l.toStatus}</strong>`
+      : `เริ่มงาน: <strong>${l.toStatus}</strong>`;
+    return `<div class="log-item">
+      <div class="log-dot" style="background:${bg};color:${col}">${toSi+1}</div>
+      <div class="log-content">
+        <div class="log-arrow">${arrow}</div>
+        <div class="log-meta">${l.timestamp}${l.assignee ? ' · ' + l.assignee : ''}</div>
+        ${l.note    ? `<div class="log-note">${l.note}</div>` : ''}
+        ${l.fileUrl ? `<div class="log-file"><a href="${l.fileUrl}" target="_blank">ดูไฟล์แนบ ↗</a></div>` : ''}
+      </div></div>`;
+  }).join('') + `</div>`;
+  document.getElementById('logContent').innerHTML = html;
+}
+
+// ════════════════════════════════════════
+// Request Status Change → Show Confirm
+// ════════════════════════════════════════
+function requestChangeStatus(dir) {
+  const j = selectedJob;
+  const si = STATUSES.indexOf(j.status);
+  const newSi = si + dir;
+  if (newSi < 0 || newSi >= STATUSES.length) return;
+  const newStatus = STATUSES[newSi];
+  const assignee  = document.getElementById('step-assignee').value.trim();
+  const note      = document.getElementById('step-note').value.trim();
+
+  // Build confirm summary
+  const rows = [
+    ['งาน',           j.id],
+    ['ชื่อผู้ขอ',     j.name],
+    ['จากสถานะ',      j.status],
+    ['เป็นสถานะ',     newStatus],
+    ['ผู้ดำเนินการ',  assignee || '(ไม่ระบุ)'],
+    ['หมายเหตุ',      note     || '(ไม่มี)'],
+    ['ไฟล์แนบ',       pendingStepFile ? pendingStepFile.name : '(ไม่มี)'],
+  ].map(([k,v]) => `<div class="dialog-summary-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+
+  document.getElementById('dlgTitle').textContent = 'ยืนยันการเปลี่ยนสถานะ';
+  document.getElementById('dlgDesc').textContent  = 'ตรวจสอบข้อมูลก่อนบันทึก';
+  document.getElementById('dlgSummary').innerHTML = rows;
+  document.getElementById('dlgConfirmText').textContent = 'ยืนยัน บันทึก';
+  document.getElementById('dlgSpinner').style.display = 'none';
+
+  confirmCallback = () => doChangeStatus(dir, assignee, note);
+  document.getElementById('confirmDialog').classList.add('open');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmDialog').classList.remove('open');
+  confirmCallback = null;
+}
+
+function confirmAction() {
+  if (confirmCallback) {
+    document.getElementById('dlgConfirmBtn').disabled = true;
+    document.getElementById('dlgConfirmText').textContent = 'กำลังบันทึก...';
+    document.getElementById('dlgSpinner').style.display = 'inline-block';
+    confirmCallback();
+  }
+}
+
+// ════════════════════════════════════════
+// Do Change Status (after confirm)
+// ════════════════════════════════════════
+async function doChangeStatus(dir, assignee, note) {
+  if (dir !== 1) return;
+  const j = selectedJob;
+  const si = STATUSES.indexOf(j.status);
+  const newStatus = STATUSES[si + dir];
+
+  try {
+    let fileUrl = '';
+    if (pendingStepFile) {
+      const b64 = await fileToBase64(pendingStepFile);
+      const res = await gasAPI('uploadFile', {
+        base64Data: b64, fileName: pendingStepFile.name,
+        mimeType: pendingStepFile.type, subFolder: 'STEP_FILES'
+      });
+      if (res.success) fileUrl = res.url;
+    }
+
+    const stepData = { assignee, note, fileUrl };
+    const res = await gasAPI('updateStatus', { jobId: j.id, newStatus, stepData });
+
+    closeConfirm();
+    if (res.success) {
+      const idx = allJobs.findIndex(jj => jj.id === j.id);
+      if (idx >= 0) {
+        allJobs[idx].status = newStatus;
+        if (assignee) allJobs[idx].assignee = assignee;
+      }
+      selectedJob.status = newStatus;
+      if (assignee) selectedJob.assignee = assignee;
+      renderSheetHeader(); renderStepTab();
+      renderList(); renderDash(); updateSummary(); renderKPI();
+      document.getElementById('step-note').value = '';
+      document.getElementById('step-file-preview').innerHTML = '';
+      pendingStepFile = null;
+      showToast('อัปเดตเป็น: ' + newStatus, 'success');
+    } else showToast('อัปเดตไม่สำเร็จ: ' + res.error, 'error');
+
+  } catch(e) { closeConfirm(); showToast('เกิดข้อผิดพลาด: ' + e.message, 'error'); }
+}
+
+// ════════════════════════════════════════
+// Step File
+// ════════════════════════════════════════
+function handleStepFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  pendingStepFile = file;
+  document.getElementById('step-file-preview').innerHTML =
+    `<div class="preview-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>${file.name}</div>`;
+}
+
+// ════════════════════════════════════════
+// Add Job
+// ════════════════════════════════════════
+function handleFileSelect(event, type) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (type === 'img') pendingImg = file;
+  else pendingPdf = file;
+  const pid = type === 'img' ? 'imgPreview' : 'pdfPreview';
+  document.getElementById(pid).innerHTML =
+    `<div class="preview-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>${file.name}</div>`;
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+async function submitJob() {
+  const name   = document.getElementById('f-name').value.trim();
+  const phone  = document.getElementById('f-phone').value.trim();
+  const detail = document.getElementById('f-detail').value.trim();
+  if (!name || !phone || !detail) { showToast('กรุณากรอกข้อมูลที่จำเป็น', 'error'); return; }
+
+  const btn  = document.getElementById('submitBtn');
+  const txt  = document.getElementById('submitText');
+  const spin = document.getElementById('submitSpinner');
+  btn.disabled = true; txt.textContent = 'กำลังบันทึก...'; spin.style.display = 'block';
+
+  try {
+    let imageUrl = '', fileUrl = '';
+    if (pendingImg) {
+      const b64 = await fileToBase64(pendingImg);
+      const res = await gasAPI('uploadFile', { base64Data: b64, fileName: pendingImg.name, mimeType: pendingImg.type, subFolder: 'IMG' });
+      if (res.success) imageUrl = res.url;
+    }
+    if (pendingPdf) {
+      const b64 = await fileToBase64(pendingPdf);
+      const res = await gasAPI('uploadFile', { base64Data: b64, fileName: pendingPdf.name, mimeType: pendingPdf.type, subFolder: 'PDF' });
+      if (res.success) fileUrl = res.url;
+    }
+
+    const res = await gasAPI('saveData', { formData: {
+      name, phone, detail,
+      assignee: document.getElementById('f-assignee').value.trim(),
+      note:     document.getElementById('f-note').value.trim(),
+      imageUrl, fileUrl
+    }});
+
+    btn.disabled = false; txt.textContent = 'บันทึกงานใหม่'; spin.style.display = 'none';
+    if (res.success) {
+      showToast('บันทึกงาน ' + res.id + ' สำเร็จ!', 'success');
+      clearForm(); loadData();
+      document.querySelectorAll('.tab-item')[0].click();
+    } else showToast('บันทึกไม่สำเร็จ: ' + res.error, 'error');
+
+  } catch(e) {
+    btn.disabled=false; txt.textContent='บันทึกงานใหม่'; spin.style.display='none';
+    showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  }
+}
+
+function clearForm() {
+  ['f-name','f-phone','f-detail','f-assignee','f-note'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('imgPreview').innerHTML = '';
+  document.getElementById('pdfPreview').innerHTML = '';
+  document.getElementById('imgInput').value = '';
+  document.getElementById('pdfInput').value = '';
+  pendingImg = null; pendingPdf = null;
+}
+
+// ════════════════════════════════════════
+// Toast
+// ════════════════════════════════════════
+let toastTimer;
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + (type||'');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className='toast', 3000);
+}
+</script>
+</body>
+</html>
