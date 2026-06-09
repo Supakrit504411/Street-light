@@ -13,9 +13,7 @@
     <div class="topbar-inner">
       <div class="topbar-brand">
         <div class="topbar-logo">PEA</div>
-        <div>
-          <div class="topbar-title">PEA Tracking</div>
-        </div>
+        <div class="topbar-title">PEA Tracking</div>
       </div>
       <div class="topbar-actions">
         <div class="session-badge" id="sessionBadge" style="display:none">
@@ -31,24 +29,24 @@
   <div class="tab-bar">
     <div class="tab-item active" onclick="switchTab('list',this)">รายการงาน</div>
     <div class="tab-item" onclick="switchTab('dash',this)">แดชบอร์ด</div>
-    <div class="tab-item" onclick="switchTab('kpi',this)">KPI</div>
   </div>
 
   <div class="page active" id="page-list">
     <div class="page-shell">
       <div class="page-main">
-        <div class="page-toolbar">
-          <div class="search-wrap">
+        <div class="summary-grid list-summary-grid">
+          <div class="stat-card"><div class="num" id="cnt-total">-</div><div class="lbl">งานทั้งหมด</div></div>
+          <div class="stat-card"><div class="num" id="cnt-active">-</div><div class="lbl">กำลังดำเนินการ</div></div>
+          <div class="stat-card"><div class="num" id="cnt-done">-</div><div class="lbl">ครบทุกขั้นตอน</div></div>
+        </div>
+
+        <div class="page-toolbar table-toolbar">
+          <div class="search-wrap compact-search">
             <div class="search-icon">⌕</div>
             <input class="search-input" id="searchInput" placeholder="ค้นหา WBS, คำอธิบาย, ผู้ควบคุมงาน..." oninput="renderList()">
           </div>
-          <button class="export-btn" onclick="exportListCsv()">Export CSV</button>
-        </div>
-        <button class="adv-filter-btn" id="advFilterBtn" onclick="toggleFilterPanel()">ตัวกรองเพิ่มเติม</button>
-        <div class="filter-panel" id="filterPanel">
-          <div class="filter-panel-hd"><span>กรองข้อมูล</span><span style="font-size:11px;cursor:pointer;color:var(--gold)" onclick="clearAdvFilter()">ล้าง</span></div>
-          <div class="filter-panel-body">
-            <div class="filter-group">
+          <div class="toolbar-actions">
+            <div class="compact-filter">
               <label>Transformer</label>
               <select id="f-transformer-filter" onchange="renderList()">
                 <option value="">ทั้งหมด</option>
@@ -56,16 +54,33 @@
                 <option value="CUS">CUS</option>
               </select>
             </div>
+            <button class="export-btn small-btn" onclick="exportListCsv()">Export CSV</button>
           </div>
         </div>
-        <div class="summary-grid list-summary-grid">
-          <div class="stat-card"><div class="num" id="cnt-total">-</div><div class="lbl">งานทั้งหมด</div></div>
-          <div class="stat-card"><div class="num" id="cnt-active">-</div><div class="lbl">กำลังดำเนินการ</div></div>
-          <div class="stat-card"><div class="num" id="cnt-done">-</div><div class="lbl">ครบทุกขั้นตอน</div></div>
-        </div>
+
         <div class="filter-row" id="filterRow"></div>
         <div class="section-hd"><span>รายการงาน</span><span class="count-badge" id="listCount">0 งาน</span></div>
-        <div class="job-list" id="jobList"></div>
+
+        <div class="table-card">
+          <div class="table-wrap">
+            <table class="kpi-table">
+              <thead>
+                <tr>
+                  <th>ลำดับ</th>
+                  <th>WBS</th>
+                  <th>คำอธิบาย</th>
+                  <th>ผู้ควบคุมงาน</th>
+                  <th>สถานะระบบ</th>
+                  <th>สถานะ</th>
+                  <th>%เบิกพัสดุ</th>
+                  <th>%เบิก ค่าแรง</th>
+                  <th>สถานะล่าสุด / ไฟล์ / เวลา</th>
+                </tr>
+              </thead>
+              <tbody id="jobList"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -90,68 +105,12 @@
                 <option value="all">ทั้งหมด</option>
               </select>
             </div>
-            <button class="export-btn" onclick="exportDashCsv()">Export CSV</button>
+            <button class="export-btn small-btn" onclick="exportDashCsv()">Export CSV</button>
           </div>
         </div>
         <div class="dash-layout">
-          <div class="dash-card narrow-stats"><div class="dash-card-hd">สถิติแต่ละสถานะ O-X</div><div id="dashStatusList"></div></div>
+          <div class="dash-card narrow-stats"><div class="dash-card-hd">สถิติแต่ละสถานะ</div><div id="dashStatusList"></div></div>
           <div class="dash-card"><div class="dash-card-hd">รายการตามตัวกรอง</div><div id="recentList"></div></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="page" id="page-kpi">
-    <div class="page-shell">
-      <div class="page-main">
-        <div class="kpi-grid">
-          <div class="kpi-card"><div class="kpi-num" id="kpi-total">-</div><div class="kpi-label">งานทั้งหมด</div></div>
-          <div class="kpi-card"><div class="kpi-num" id="kpi-done">-</div><div class="kpi-label">งานที่ครบทุกขั้น</div><div class="kpi-sub" id="kpi-done-pct"></div></div>
-          <div class="kpi-card"><div class="kpi-num" id="kpi-overdue">-</div><div class="kpi-label">งานค้าง</div></div>
-          <div class="kpi-card"><div class="kpi-num" id="kpi-this-month">-</div><div class="kpi-label">Transformer PEA</div><div class="kpi-sub" id="kpi-month-label"></div></div>
-        </div>
-        <div class="page-toolbar kpi-toolbar-wrap">
-          <div class="kpi-toolbar">
-            <div class="filter-group">
-              <label>ค้นหา</label>
-              <input id="kpiSearchInput" oninput="renderKPI()">
-            </div>
-            <div class="filter-group">
-              <label>สถานะล่าสุด</label>
-              <select id="kpiStepFilter" onchange="renderKPI()">
-                <option value="all">ทั้งหมด</option>
-              </select>
-            </div>
-            <div class="filter-group">
-              <label>Transformer</label>
-              <select id="kpiTransformerFilter" onchange="renderKPI()">
-                <option value="all">ทั้งหมด</option>
-                <option value="PEA">PEA</option>
-                <option value="CUS">CUS</option>
-              </select>
-            </div>
-          </div>
-          <button class="export-btn" onclick="exportKpiCsv()">Export CSV</button>
-        </div>
-        <div class="table-card">
-          <div class="table-wrap">
-            <table class="kpi-table">
-              <thead>
-                <tr>
-                  <th>ลำดับ</th>
-                  <th>WBS</th>
-                  <th>คำอธิบาย</th>
-                  <th>ผู้ควบคุมงาน</th>
-                  <th>สถานะระบบ</th>
-                  <th>สถานะ</th>
-                  <th>%เบิกพัสดุ</th>
-                  <th>%เบิก ค่าแรง</th>
-                  <th>สถานะล่าสุด / ไฟล์ / เวลา</th>
-                </tr>
-              </thead>
-              <tbody id="kpiTableBody"></tbody>
-            </table>
-          </div>
         </div>
       </div>
     </div>
