@@ -1,8 +1,3 @@
-// ============================================================
-// ui.js — Tab switching, Toast, Confirm Dialog
-// ============================================================
-
-// ── Tab Bar ──
 function switchTab(tab, el) {
   document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -11,24 +6,22 @@ function switchTab(tab, el) {
   if (tab === 'kpi') renderKPI();
 }
 
-// ── Toast ──
 let toastTimer;
 function showToast(msg, type) {
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.className = 'toast show ' + (type || '');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.className = 'toast', 3000);
+  toastTimer = setTimeout(() => { el.className = 'toast'; }, 3000);
 }
 
-// ── Confirm Dialog ──
 function openConfirm({ title, desc, summary, onConfirm }) {
-  document.getElementById('dlgTitle').textContent   = title;
-  document.getElementById('dlgDesc').textContent    = desc;
-  document.getElementById('dlgSummary').innerHTML   = summary;
+  document.getElementById('dlgTitle').textContent = title;
+  document.getElementById('dlgDesc').textContent = desc;
+  document.getElementById('dlgSummary').innerHTML = summary;
   document.getElementById('dlgConfirmText').textContent = 'ยืนยัน บันทึก';
-  document.getElementById('dlgSpinner').style.display  = 'none';
-  document.getElementById('dlgConfirmBtn').disabled    = false;
+  document.getElementById('dlgSpinner').style.display = 'none';
+  document.getElementById('dlgConfirmBtn').disabled = false;
   confirmCallback = onConfirm;
   document.getElementById('confirmDialog').classList.add('open');
 }
@@ -40,8 +33,8 @@ function closeConfirm() {
 
 function confirmAction() {
   if (!confirmCallback) return;
-  document.getElementById('dlgConfirmBtn').disabled    = true;
+  document.getElementById('dlgConfirmBtn').disabled = true;
   document.getElementById('dlgConfirmText').textContent = 'กำลังบันทึก...';
-  document.getElementById('dlgSpinner').style.display   = 'inline-block';
+  document.getElementById('dlgSpinner').style.display = 'inline-block';
   confirmCallback();
 }
