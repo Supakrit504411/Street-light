@@ -126,13 +126,11 @@
     <div class="sheet-title" id="sheetName">-</div>
     <div class="sheet-subtitle" id="sheetSub">-</div>
     <div class="sheet-tabs">
-      <div class="sheet-tab active" onclick="switchSheetTab('detail',this)">รายละเอียด</div>
-      <div class="sheet-tab" onclick="switchSheetTab('step',this)">อัปเดตขั้นตอน</div>
+      <div class="sheet-tab active" onclick="switchSheetTab('step',this)">อัปเดตขั้นตอน</div>
       <div class="sheet-tab" onclick="switchSheetTab('log',this)">ประวัติ</div>
     </div>
   </div>
-  <div class="sheet-body" id="tabDetail"></div>
-  <div class="sheet-body" id="tabStep" style="display:none"></div>
+  <div class="sheet-body" id="tabStep"></div>
   <div class="sheet-body" id="tabLog" style="display:none"><div id="logContent"></div></div>
 </div>
 
@@ -167,6 +165,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="file-hover-preview" id="fileHoverPreview"></div>
 
 <script src="js/state.js"></script>
 <script src="js/api.js"></script>

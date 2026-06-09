@@ -1,10 +1,10 @@
 function openSheet(jobId) {
   selectedJob = allJobs.find(job => job.id === jobId);
   if (!selectedJob) return;
-  currentSheetTab = 'detail';
+  currentSheetTab = 'step';
   pendingStepFile = null;
   renderSheetHeader();
-  switchSheetTab('detail', document.querySelectorAll('.sheet-tab')[0]);
+  switchSheetTab('step', document.querySelectorAll('.sheet-tab')[0]);
   document.getElementById('backdrop').classList.add('open');
   document.getElementById('jobSheet').classList.add('open');
 }
@@ -24,69 +24,15 @@ function switchSheetTab(tab, el) {
   currentSheetTab = tab;
   document.querySelectorAll('.sheet-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('tabDetail').style.display = tab === 'detail' ? 'block' : 'none';
   document.getElementById('tabStep').style.display = tab === 'step' ? 'block' : 'none';
   document.getElementById('tabLog').style.display = tab === 'log' ? 'block' : 'none';
-  if (tab === 'detail') renderDetailTab();
   if (tab === 'step') renderStepTab();
   if (tab === 'log') loadLog();
 }
 
-function renderDetailTab() {
-  const job = selectedJob;
-  const fieldRows = [
-    ['WBS', job.detail.wbs],
-    ['PEA NO หม้อแปลง', job.detail.peaNo],
-    ['คำอธิบาย', job.detail.description],
-    ['ทีม 1', job.detail.teamPrimary],
-    ['ทีม 2', job.detail.teamSecondary],
-    ['ผู้ควบคุมงาน', job.detail.supervisor],
-    ['สถานะระบบ', job.detail.systemStatus],
-    ['สถานะ', job.detail.statusText],
-    ['%เบิกพัสดุ', job.detail.materialPct],
-    ['%เบิก', job.detail.withdrawPct],
-    ['ค่าแรง', job.detail.laborCost],
-    ['%TC', job.detail.tcPct],
-    ['วันชำระเงิน', job.detail.paymentDate],
-    ['วันเปิดงาน', job.detail.openDate],
-    ['เดือน', job.detail.month],
-    ['Transformer?', renderTransformerControl(job)]
-  ];
-
-  const detailHtml = fieldRows.map(([label, value]) =>
-    `<div class="detail-row"><div class="detail-label">${label}</div><div class="detail-value">${value || '-'}</div></div>`
-  ).join('');
-
-  const stepFiles = job.steps
-    .filter(step => step.fileUrl)
-    .map(step => `<div class="detail-row"><div class="detail-label">${step.label}</div><div class="detail-value"><a href="${step.fileUrl}" target="_blank">เปิดไฟล์แนบ</a></div></div>`)
-    .join('');
-
-  document.getElementById('tabDetail').innerHTML = detailHtml + stepFiles;
-}
-
-function renderTransformerControl(job) {
-  const disabled = !currentUser ? 'disabled' : '';
-  return `<select class="form-select" ${disabled} onchange="changeTransformer(this.value)">
-    <option value="" ${job.transformer === '' ? 'selected' : ''}>-</option>
-    <option value="PEA" ${job.transformer === 'PEA' ? 'selected' : ''}>PEA</option>
-    <option value="CUS" ${job.transformer === 'CUS' ? 'selected' : ''}>CUS</option>
-  </select>`;
-}
-
-async function changeTransformer(value) {
-  if (!ensureLoggedIn() || !selectedJob) return;
-  const res = await gasAPI('updateTransformer', { jobId: selectedJob.id, transformer: value, auth: currentAuth });
-  if (!res.success) {
-    showToast(res.error || 'อัปเดต Transformer ไม่สำเร็จ', 'error');
-    renderDetailTab();
-    return;
-  }
-  await bootstrapApp();
-  selectedJob = allJobs.find(job => job.id === selectedJob.id);
-  renderDetailTab();
-  renderSheetHeader();
-  showToast('อัปเดต Transformer แล้ว', 'success');
+function renderFileLink(url, label = 'ไฟล์แนบ') {
+  if (!url) return '<span class="muted-inline">ไม่มีไฟล์</span>';
+  return `<a href="${url}" target="_blank" class="file-link" onmouseenter="showFilePreview(event, '${url}')" onmousemove="moveFilePreview(event)" onmouseleave="hideFilePreview()">${label}</a>`;
 }
 
 function renderStepTab() {
@@ -101,7 +47,7 @@ function renderStepTab() {
         </div>
         <button class="step-inline-btn" ${canEdit ? '' : 'disabled'} onclick="requestStepUpdate('${step.key}')">ยืนยัน YES</button>
       </div>
-      ${step.fileUrl ? `<div class="step-link"><a href="${step.fileUrl}" target="_blank">เปิดไฟล์แนบ</a></div>` : ''}
+      <div class="step-link">${renderFileLink(step.fileUrl)}</div>
     </div>`;
   }).join('');
 
@@ -183,7 +129,6 @@ async function doStepUpdate(stepKey, note) {
     pendingStepFile = null;
     renderSheetHeader();
     renderStepTab();
-    renderDetailTab();
     showToast('บันทึกขั้นตอนเรียบร้อย', 'success');
   } catch (e) {
     closeConfirm();
@@ -192,31 +137,56 @@ async function doStepUpdate(stepKey, note) {
 }
 
 async function loadLog() {
-  document.getElementById('logContent').innerHTML = '<div style="padding:20px;text-align:center;color:#999;font-size:13px">กำลังโหลด...</div>';
+  document.getElementById('logContent').innerHTML = '<div style="padding:20px;text-align:center;color:#667085;font-size:13px">กำลังโหลด...</div>';
   try {
     const res = await gasAPI('getLog', { jobId: selectedJob.id });
     if (!res.success) throw new Error(res.error || 'โหลด log ไม่สำเร็จ');
     renderLog(res.data || []);
   } catch (e) {
-    document.getElementById('logContent').innerHTML = `<div style="padding:16px;color:#999;font-size:13px">${e.message}</div>`;
+    document.getElementById('logContent').innerHTML = `<div style="padding:16px;color:#667085;font-size:13px">${e.message}</div>`;
   }
 }
 
 function renderLog(logs) {
   if (!logs.length) {
-    document.getElementById('logContent').innerHTML = '<div style="padding:24px;text-align:center;color:#999;font-size:13px">ยังไม่มีประวัติ</div>';
+    document.getElementById('logContent').innerHTML = '<div style="padding:24px;text-align:center;color:#667085;font-size:13px">ยังไม่มีประวัติ</div>';
     return;
   }
 
   document.getElementById('logContent').innerHTML = `<div class="log-timeline">` + logs.map((log, index) => `
     <div class="log-item">
-      <div class="log-dot" style="background:#E8F5E9;color:#1B5E20">${index + 1}</div>
+      <div class="log-dot" style="background:#eef4fb;color:#1f3a5f">${index + 1}</div>
       <div class="log-content">
         <div class="log-arrow"><strong>${log.stepLabel}</strong> ${log.fromValue ? `${log.fromValue} -> ${log.toValue}` : log.toValue}</div>
         <div class="log-meta">${log.timestamp || '-'} | ${log.actor || '-'}</div>
         ${log.note ? `<div class="log-note">${log.note}</div>` : ''}
-        ${log.fileUrl ? `<div class="log-file"><a href="${log.fileUrl}" target="_blank">เปิดไฟล์แนบ</a></div>` : ''}
+        ${log.fileUrl ? `<div class="log-file">${renderFileLink(log.fileUrl)}</div>` : ''}
       </div>
     </div>
   `).join('') + `</div>`;
+}
+
+function showFilePreview(event, url) {
+  const preview = document.getElementById('fileHoverPreview');
+  if (!preview || !url) return;
+  preview.innerHTML = `<div class="file-hover-card">
+    <div class="file-hover-title">Preview ไฟล์แนบ</div>
+    <iframe src="${url}" loading="lazy"></iframe>
+  </div>`;
+  preview.classList.add('open');
+  moveFilePreview(event);
+}
+
+function moveFilePreview(event) {
+  const preview = document.getElementById('fileHoverPreview');
+  if (!preview || !preview.classList.contains('open')) return;
+  preview.style.left = `${event.clientX + 18}px`;
+  preview.style.top = `${event.clientY + 18}px`;
+}
+
+function hideFilePreview() {
+  const preview = document.getElementById('fileHoverPreview');
+  if (!preview) return;
+  preview.classList.remove('open');
+  preview.innerHTML = '';
 }

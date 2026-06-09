@@ -12,10 +12,10 @@ const STEP_CONFIG = [
   { key: 'standardInspection', label: 'ตรวจมาตรฐาน', statusCol: 18, fileCol: 30 },
   { key: 'requestCreation', label: 'สร้างคำร้อง', statusCol: 19, fileCol: 31 },
   { key: 'requestReview', label: 'ตรวจคำร้อง', statusCol: 20, fileCol: 32 },
-  { key: 'feePayment', label: 'ชำระเงิน ค่าธรรมเนียม', statusCol: 21, fileCol: 33 },
+  { key: 'feePayment', label: 'ชำระเงิน', statusCol: 21, fileCol: 33 },
   { key: 'meterInstallation', label: 'ติดตั้งมิเตอร์', statusCol: 22, fileCol: 34 },
   { key: 'powerRelease', label: 'จ่ายไฟ', statusCol: 23, fileCol: 35 },
-  { key: 'closeoutPending', label: 'รอส่งปิดงาน', statusCol: 24, fileCol: 36 }
+  { key: 'closeoutPending', label: 'พร้อมปิด', statusCol: 24, fileCol: 36 }
 ];
 
 const DETAIL_FIELDS = [
@@ -177,6 +177,12 @@ function updateStep(payload) {
 
       sheet.getRange(i + 1, step.statusCol).setValue('YES');
       sheet.getRange(i + 1, step.fileCol).setValue(fileUrl);
+      if (stepIndex + 1 < STEP_CONFIG.length) {
+        const nextStep = STEP_CONFIG[stepIndex + 1];
+        if (!String(data[i][nextStep.statusCol - 1] || '').trim()) {
+          sheet.getRange(i + 1, nextStep.statusCol).setValue('NO');
+        }
+      }
       sheet.getRange(i + 1, UPDATED_AT_COL).setValue(new Date());
 
       writeLog_({
