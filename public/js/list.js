@@ -20,15 +20,13 @@ function toggleFilterPanel() {
 }
 
 function clearAdvFilter() {
-  document.getElementById('f-team-filter').value = '';
-  document.getElementById('f-month-filter').value = '';
+  document.getElementById('f-transformer-filter').value = '';
   renderList();
 }
 
 function renderList() {
   const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
-  const teamFilter = document.getElementById('f-team-filter').value.trim().toLowerCase();
-  const monthFilter = document.getElementById('f-month-filter').value.trim().toLowerCase();
+  const transformerFilter = document.getElementById('f-transformer-filter').value.trim().toUpperCase();
 
   const jobs = allJobs.filter(job => {
     if (currentFilter !== 'all') {
@@ -38,16 +36,16 @@ function renderList() {
 
     const hay = [
       job.id,
+      job.detail.wbs,
       job.detail.peaNo,
       job.detail.description,
       job.detail.supervisor,
-      job.detail.teamPrimary,
-      job.detail.teamSecondary
+      job.detail.systemStatus,
+      job.detail.statusText
     ].join(' ').toLowerCase();
 
     if (q && !hay.includes(q)) return false;
-    if (teamFilter && ![job.detail.teamPrimary, job.detail.teamSecondary].join(' ').toLowerCase().includes(teamFilter)) return false;
-    if (monthFilter && !String(job.detail.month || '').toLowerCase().includes(monthFilter)) return false;
+    if (transformerFilter && String(job.transformer || '').toUpperCase() !== transformerFilter) return false;
     return true;
   });
 

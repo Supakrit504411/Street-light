@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PEA Tracking</title>
 <script src="config.js"></script>
 <link rel="stylesheet" href="css/style.css">
@@ -15,7 +15,7 @@
         <div class="topbar-logo">PEA</div>
         <div>
           <div class="topbar-title">PEA Tracking</div>
-          <div class="topbar-sub">Workflow O-X และสิทธิ์รายแผนก</div>
+          <div class="topbar-sub">ข้อมูลจากชีต WBS และ workflow O-X</div>
         </div>
       </div>
       <div class="topbar-actions">
@@ -31,54 +31,112 @@
 
   <div class="tab-bar">
     <div class="tab-item active" onclick="switchTab('list',this)">รายการงาน</div>
-    <div class="tab-item" onclick="switchTab('dash',this)">ภาพรวม</div>
+    <div class="tab-item" onclick="switchTab('dash',this)">แดชบอร์ด</div>
     <div class="tab-item" onclick="switchTab('kpi',this)">KPI</div>
   </div>
 
   <div class="page active" id="page-list">
-    <div class="search-wrap">
-      <div class="search-icon">Q</div>
-      <input class="search-input" id="searchInput" placeholder="ค้นหา WBS, PEA NO, คำอธิบาย, ผู้ควบคุมงาน..." oninput="renderList()">
-    </div>
-    <button class="adv-filter-btn" id="advFilterBtn" onclick="toggleFilterPanel()">กรอง</button>
-    <div class="filter-panel" id="filterPanel">
-      <div class="filter-panel-hd"><span>กรองข้อมูล</span><span style="font-size:11px;cursor:pointer;color:var(--pea)" onclick="clearAdvFilter()">ล้าง</span></div>
-      <div class="filter-panel-body">
-        <div class="filter-group"><label>ทีม</label><input id="f-team-filter" oninput="renderList()"></div>
-        <div class="filter-group"><label>เดือน</label><input id="f-month-filter" oninput="renderList()"></div>
+    <div class="page-shell">
+      <div class="page-main">
+        <div class="search-wrap">
+          <div class="search-icon">Q</div>
+          <input class="search-input" id="searchInput" placeholder="ค้นหา WBS, คำอธิบาย, ผู้ควบคุมงาน..." oninput="renderList()">
+        </div>
+        <button class="adv-filter-btn" id="advFilterBtn" onclick="toggleFilterPanel()">ตัวกรองเพิ่มเติม</button>
+        <div class="filter-panel" id="filterPanel">
+          <div class="filter-panel-hd"><span>กรองข้อมูล</span><span style="font-size:11px;cursor:pointer;color:var(--pea)" onclick="clearAdvFilter()">ล้าง</span></div>
+          <div class="filter-panel-body">
+            <div class="filter-group">
+              <label>Transformer</label>
+              <select id="f-transformer-filter" onchange="renderList()">
+                <option value="">ทั้งหมด</option>
+                <option value="PEA">PEA</option>
+                <option value="CUS">CUS</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="summary-grid">
+          <div class="stat-card"><div class="num" id="cnt-total">-</div><div class="lbl">งานทั้งหมด</div></div>
+          <div class="stat-card"><div class="num" id="cnt-active">-</div><div class="lbl">กำลังดำเนินการ</div></div>
+          <div class="stat-card"><div class="num" id="cnt-done">-</div><div class="lbl">ครบทุกขั้นตอน</div></div>
+          <div class="stat-card"><div class="num" id="cnt-today">-</div><div class="lbl">งานเดือนปัจจุบัน</div></div>
+        </div>
+        <div class="filter-row" id="filterRow"></div>
+        <div class="section-hd"><span>รายการงาน</span><span class="count-badge" id="listCount">0 งาน</span></div>
+        <div class="job-list" id="jobList"></div>
       </div>
     </div>
-    <div class="summary-grid">
-      <div class="stat-card"><div class="num" id="cnt-total">-</div><div class="lbl">งานทั้งหมด</div></div>
-      <div class="stat-card"><div class="num" id="cnt-active">-</div><div class="lbl">กำลังดำเนินการ</div></div>
-      <div class="stat-card"><div class="num" id="cnt-done">-</div><div class="lbl">ครบทุกขั้นตอน</div></div>
-      <div class="stat-card"><div class="num" id="cnt-today">-</div><div class="lbl">งานเดือนปัจจุบัน</div></div>
-    </div>
-    <div class="filter-row" id="filterRow"></div>
-    <div class="section-hd"><span>รายการงาน</span><span class="count-badge" id="listCount">0 งาน</span></div>
-    <div class="job-list" id="jobList"></div>
   </div>
 
   <div class="page" id="page-dash">
-    <div class="dash-page">
-      <div class="dash-card"><div class="dash-card-hd">สถานะตามแต่ละขั้นตอน</div><div id="dashStatusList"></div></div>
-      <div class="dash-card"><div class="dash-card-hd">งานล่าสุด</div><div id="recentList"></div></div>
+    <div class="page-shell">
+      <div class="page-main">
+        <div class="dash-toolbar">
+          <div class="filter-group">
+            <label>กรองตามสถานะที่ยืนยันแล้ว</label>
+            <select id="dashStepFilter" onchange="renderDash()">
+              <option value="all">ทั้งหมด</option>
+            </select>
+          </div>
+        </div>
+        <div class="dash-layout">
+          <div class="dash-card"><div class="dash-card-hd">สถิติแต่ละสถานะ O-X</div><div id="dashStatusList"></div></div>
+          <div class="dash-card"><div class="dash-card-hd">รายการตามตัวกรอง</div><div id="recentList" class="dash-mini-grid"></div></div>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="page" id="page-kpi">
-    <div class="dash-page">
-      <div class="kpi-grid">
-        <div class="kpi-card"><div class="kpi-num" id="kpi-total">-</div><div class="kpi-label">งานทั้งหมด</div></div>
-        <div class="kpi-card"><div class="kpi-num" id="kpi-done">-</div><div class="kpi-label">งานที่ครบทุกขั้น</div><div class="kpi-sub" id="kpi-done-pct"></div></div>
-        <div class="kpi-card"><div class="kpi-num" id="kpi-overdue">-</div><div class="kpi-label">งานค้างดำเนินการ</div></div>
-        <div class="kpi-card"><div class="kpi-num" id="kpi-this-month">-</div><div class="kpi-label">Transformer รวม</div><div class="kpi-sub" id="kpi-month-label"></div></div>
+    <div class="page-shell">
+      <div class="page-main">
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-num" id="kpi-total">-</div><div class="kpi-label">งานทั้งหมด</div></div>
+          <div class="kpi-card"><div class="kpi-num" id="kpi-done">-</div><div class="kpi-label">งานที่ครบทุกขั้น</div><div class="kpi-sub" id="kpi-done-pct"></div></div>
+          <div class="kpi-card"><div class="kpi-num" id="kpi-overdue">-</div><div class="kpi-label">งานค้าง</div></div>
+          <div class="kpi-card"><div class="kpi-num" id="kpi-this-month">-</div><div class="kpi-label">Transformer PEA</div><div class="kpi-sub" id="kpi-month-label"></div></div>
+        </div>
+        <div class="kpi-toolbar">
+          <div class="filter-group">
+            <label>ค้นหา</label>
+            <input id="kpiSearchInput" oninput="renderKPI()">
+          </div>
+          <div class="filter-group">
+            <label>สถานะล่าสุด</label>
+            <select id="kpiStepFilter" onchange="renderKPI()">
+              <option value="all">ทั้งหมด</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Transformer</label>
+            <select id="kpiTransformerFilter" onchange="renderKPI()">
+              <option value="all">ทั้งหมด</option>
+              <option value="PEA">PEA</option>
+              <option value="CUS">CUS</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-card">
+          <div class="table-wrap">
+            <table class="kpi-table">
+              <thead>
+                <tr>
+                  <th>A</th>
+                  <th>C</th>
+                  <th>F</th>
+                  <th>G</th>
+                  <th>H</th>
+                  <th>I</th>
+                  <th>J</th>
+                  <th>สถานะล่าสุด / ไฟล์ / เวลา</th>
+                </tr>
+              </thead>
+              <tbody id="kpiTableBody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
-      <div class="dash-card">
-        <div class="dash-card-hd" style="display:flex;justify-content:space-between;align-items:center"><span>งานค้าง</span><span id="overdue-badge" class="count-badge">0</span></div>
-        <div class="overdue-list" id="overdueList"></div>
-      </div>
-      <div class="dash-card"><div class="dash-card-hd">สรุปตามผู้ควบคุมงาน</div><div id="assigneeList"></div></div>
     </div>
   </div>
 

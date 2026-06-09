@@ -1,5 +1,5 @@
 const SHEET_ID = '1b0IpzSZL90xy_cjjWpH92qTLVTGrX6vuORpbEloC_-8';
-const SHEET_NAME = 'DATA';
+const SHEET_NAME = 'WBS';
 const LOG_SHEET_NAME = 'LOG';
 const CONFIG_SHEET_NAME = 'CONFIG';
 const DRIVE_FOLDER_ID = '1Uysy9114UZ0nEJc-a3_kUL2WGdWMagOY';
@@ -28,11 +28,11 @@ const DETAIL_FIELDS = [
   { key: 'systemStatus', label: 'สถานะระบบ', col: 7 },
   { key: 'statusText', label: 'สถานะ', col: 8 },
   { key: 'materialPct', label: '%เบิกพัสดุ', col: 9 },
-  { key: 'withdrawPct', label: '%เบิก', col: 10 },
+  { key: 'withdrawPct', label: '%เบิก ค่าแรง', col: 10 },
   { key: 'laborCost', label: 'ค่าแรง', col: 11 },
-  { key: 'tcPct', label: '%TC', col: 12 },
-  { key: 'paymentDate', label: 'วันชำระเงิน', col: 13, type: 'date' },
-  { key: 'openDate', label: 'วันเปิดงาน', col: 14, type: 'date' }
+  { key: 'paymentDate', label: 'วันชำระเงิน', col: 12, type: 'date' },
+  { key: 'openDate', label: 'วันเปิดงาน', col: 13, type: 'date' },
+  { key: 'month', label: 'เดือน', col: 14 }
 ];
 
 const UPDATED_AT_COL = 25; // Y
@@ -115,7 +115,6 @@ function mapRowToJob_(row, rowNumber) {
   DETAIL_FIELDS.forEach(field => {
     detail[field.key] = formatValue_(row[field.col - 1], field.type);
   });
-  detail.month = deriveMonth_(row[13]);
 
   const steps = STEP_CONFIG.map((step, index) => ({
     key: step.key,
@@ -134,7 +133,9 @@ function mapRowToJob_(row, rowNumber) {
     updatedAt: formatValue_(row[UPDATED_AT_COL - 1], 'datetime'),
     transformer: String(row[TRANSFORMER_COL - 1] || ''),
     currentStepIndex: getCurrentStepIndex_(steps),
-    isComplete: steps.every(step => step.value === 'YES')
+    isComplete: steps.every(step => step.value === 'YES'),
+    latestStep: getLatestStep_(steps),
+    latestFileUrl: getLatestFileUrl_(steps)
   };
 }
 
@@ -352,18 +353,25 @@ function formatValue_(value, type) {
   return String(value);
 }
 
-function deriveMonth_(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (isNaN(date.getTime())) return String(value);
-  return String(date.getMonth() + 1);
-}
-
 function getCurrentStepIndex_(steps) {
   for (let i = 0; i < steps.length; i++) {
     if (steps[i].value !== 'YES') return i;
   }
   return steps.length - 1;
+}
+
+function getLatestStep_(steps) {
+  for (let i = steps.length - 1; i >= 0; i--) {
+    if (steps[i].value === 'YES') return steps[i];
+  }
+  return steps[0] || null;
+}
+
+function getLatestFileUrl_(steps) {
+  for (let i = steps.length - 1; i >= 0; i--) {
+    if (steps[i].value === 'YES' && steps[i].fileUrl) return steps[i].fileUrl;
+  }
+  return '';
 }
 
 function ensureConfigSheetSetup_(sheet) {

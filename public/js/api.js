@@ -20,6 +20,7 @@ async function bootstrapApp() {
     allJobs = res.jobs || [];
     appMeta.stepConfig = res.stepConfig || [];
     renderFilterChips();
+    populateStepSelects();
     renderList();
     renderDash();
     updateSummary();
@@ -27,6 +28,17 @@ async function bootstrapApp() {
   } catch (e) {
     showToast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, 'error');
   }
+}
+
+function populateStepSelects() {
+  ['dashStepFilter', 'kpiStepFilter'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const current = el.value || 'all';
+    el.innerHTML = '<option value="all">ทั้งหมด</option>' + (appMeta.stepConfig || [])
+      .map(step => `<option value="${step.key}" ${current === step.key ? 'selected' : ''}>${step.label}</option>`)
+      .join('');
+  });
 }
 
 async function login() {

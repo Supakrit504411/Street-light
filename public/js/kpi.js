@@ -1,7 +1,15 @@
 function renderDash() {
-  const total = allJobs.length || 1;
+  const selectedStepKey = document.getElementById('dashStepFilter') ? document.getElementById('dashStepFilter').value : 'all';
+  const filteredJobs = selectedStepKey === 'all'
+    ? allJobs
+    : allJobs.filter(job => {
+        const step = job.steps.find(item => item.key === selectedStepKey);
+        return step && step.value === 'YES';
+      });
+  const total = filteredJobs.length || 1;
+
   document.getElementById('dashStatusList').innerHTML = (appMeta.stepConfig || []).map((step, index) => {
-    const cnt = allJobs.filter(job => {
+    const cnt = filteredJobs.filter(job => {
       const found = job.steps.find(item => item.key === step.key);
       return found && found.value === 'YES';
     }).length;
@@ -14,66 +22,71 @@ function renderDash() {
     </div>`;
   }).join('');
 
-  const recent = [...allJobs].slice(-8).reverse();
-  document.getElementById('recentList').innerHTML = recent.length
-    ? recent.map(job => `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(0,0,0,.05)">
-        <div><div style="font-size:13px;font-weight:500">${job.detail.peaNo || job.id}</div>
-        <div style="font-size:11px;color:#9ca3af">${job.id} | ${getCurrentStepLabel(job)}</div></div>
-        <span class="status-badge ${job.isComplete ? 's5' : 's1'}">${getStepSummary(job)}</span>
+  document.getElementById('recentList').innerHTML = filteredJobs.length
+    ? filteredJobs.slice(0, 12).map(job => `
+      <div class="dash-mini-card" onclick="openSheet('${job.id}')">
+        <div class="dash-mini-title">${job.detail.wbs || job.id}</div>
+        <div class="dash-mini-sub">${job.detail.description || '-'}</div>
+        <div class="dash-mini-foot">${job.latestStep ? job.latestStep.label : '-'} | ${job.updatedAt || '-'}</div>
       </div>`).join('')
-    : '<div style="padding:16px;text-align:center;color:#999;font-size:13px">ยังไม่มีงาน</div>';
+    : '<div style="padding:16px;text-align:center;color:#999;font-size:13px">ยังไม่มีข้อมูลตามตัวกรอง</div>';
+}
+
+function getKpiFilteredJobs() {
+  const stepKey = document.getElementById('kpiStepFilter') ? document.getElementById('kpiStepFilter').value : 'all';
+  const transformer = document.getElementById('kpiTransformerFilter') ? document.getElementById('kpiTransformerFilter').value : 'all';
+  const q = (document.getElementById('kpiSearchInput') ? document.getElementById('kpiSearchInput').value : '').toLowerCase().trim();
+
+  return allJobs.filter(job => {
+    if (stepKey !== 'all') {
+      const step = job.steps.find(item => item.key === stepKey);
+      if (!step || step.value !== 'YES') return false;
+    }
+    if (transformer !== 'all' && String(job.transformer || '') !== transformer) return false;
+    const hay = [
+      job.id,
+      job.detail.wbs,
+      job.detail.description,
+      job.detail.supervisor,
+      job.detail.systemStatus,
+      job.detail.statusText
+    ].join(' ').toLowerCase();
+    if (q && !hay.includes(q)) return false;
+    return true;
+  });
 }
 
 function renderKPI() {
-  const total = allJobs.length;
-  const done = allJobs.filter(job => job.isComplete).length;
-  const donePct = total ? Math.round((done / total) * 100) : 0;
-  const active = total - done;
-  const transformerPEA = allJobs.filter(job => job.transformer === 'PEA').length;
-  const transformerCUS = allJobs.filter(job => job.transformer === 'CUS').length;
+  const jobs = getKpiFilteredJobs();
+  const total = jobs.length;
+  const done = jobs.filter(job => job.isComplete).length;
+  const open = total - done;
+  const pea = jobs.filter(job => job.transformer === 'PEA').length;
 
   document.getElementById('kpi-total').textContent = total;
   document.getElementById('kpi-done').textContent = done;
-  document.getElementById('kpi-done-pct').textContent = donePct + '% ของทั้งหมด';
-  document.getElementById('kpi-overdue').textContent = active;
-  document.getElementById('kpi-this-month').textContent = transformerPEA + transformerCUS;
-  document.getElementById('kpi-month-label').textContent = `PEA ${transformerPEA} | CUS ${transformerCUS}`;
-  document.getElementById('overdue-badge').textContent = active;
+  document.getElementById('kpi-done-pct').textContent = total ? Math.round((done / total) * 100) + '% ของตัวกรอง' : '0% ของตัวกรอง';
+  document.getElementById('kpi-overdue').textContent = open;
+  document.getElementById('kpi-this-month').textContent = pea;
+  document.getElementById('kpi-month-label').textContent = `CUS ${total - pea}`;
 
-  document.getElementById('overdueList').innerHTML = allJobs
-    .filter(job => !job.isComplete)
-    .slice(0, 10)
-    .map(job => `<div class="overdue-item" onclick="openSheet('${job.id}')">
-      <div>
-        <div class="overdue-name">${job.detail.peaNo || job.id}</div>
-        <div class="overdue-meta">${job.id} | ${getCurrentStepLabel(job)}</div>
-      </div>
-      <div class="overdue-days">${getStepSummary(job)}</div>
-    </div>`).join('') || '<div style="padding:16px;text-align:center;color:#999;font-size:13px">ไม่มีงานค้าง</div>';
-
-  const people = {};
-  allJobs.forEach(job => {
-    const name = job.detail.supervisor || '(ไม่ระบุ)';
-    if (!people[name]) people[name] = { total: 0, done: 0 };
-    people[name].total++;
-    if (job.isComplete) people[name].done++;
-  });
-  const rows = Object.entries(people).sort((a, b) => b[1].total - a[1].total);
-  document.getElementById('assigneeList').innerHTML = rows.map(([name, value]) => {
-    const pct = value.total ? Math.round((value.done / value.total) * 100) : 0;
-    return `<div class="assignee-row">
-      <div class="assignee-avatar">${name.slice(0, 2)}</div>
-      <div style="flex:1">
-        <div class="assignee-name">${name}</div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
-          <div class="bar-track" style="flex:1"><div class="bar-fill" style="width:${pct}%;background:var(--pea)"></div></div>
-          <span style="font-size:10px;color:var(--muted);white-space:nowrap">${pct}%</span>
-        </div>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div class="assignee-done">${value.done}/${value.total}</div>
-        <div class="assignee-count" style="margin-top:2px">งานทั้งหมด</div>
-      </div>
-    </div>`;
-  }).join('') || '<div style="padding:16px;text-align:center;color:#999;font-size:13px">ยังไม่มีข้อมูล</div>';
+  document.getElementById('kpiTableBody').innerHTML = jobs.length
+    ? jobs.map(job => {
+        const latest = job.latestStep;
+        return `<tr onclick="openSheet('${job.id}')">
+          <td>${job.detail.wbs || '-'}</td>
+          <td>${job.detail.description || '-'}</td>
+          <td>${job.detail.supervisor || '-'}</td>
+          <td>${job.detail.systemStatus || '-'}</td>
+          <td>${job.detail.statusText || '-'}</td>
+          <td>${job.detail.materialPct || '-'}</td>
+          <td>${job.detail.withdrawPct || '-'}</td>
+          <td>
+            <div class="kpi-latest-step">${latest ? latest.label : '-'}</div>
+            <div class="kpi-latest-meta">${job.updatedAt || '-'}</div>
+            ${job.latestFileUrl ? `<a href="${job.latestFileUrl}" target="_blank">ไฟล์แนบ</a>` : '<span class="muted-inline">ไม่มีไฟล์</span>'}
+          </td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="8" class="kpi-empty">ไม่พบข้อมูล</td></tr>';
 }
