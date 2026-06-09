@@ -15,6 +15,7 @@ async function gasAPI(action, params = {}) {
 
 async function bootstrapApp() {
   try {
+    showLoadingToast('กำลังโหลดข้อมูลจากระบบ...');
     const res = await gasAPI('getBootstrap');
     if (!res.success) throw new Error(res.error || 'โหลดข้อมูลไม่สำเร็จ');
     allJobs = res.jobs || [];
@@ -23,10 +24,10 @@ async function bootstrapApp() {
     populateStepSelects();
     renderList();
     renderDash();
-    updateSummary();
     renderKPI();
+    hideToast();
   } catch (e) {
-    showToast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, 'error');
+    showToast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, 'error', 4500);
   }
 }
 
@@ -49,7 +50,15 @@ async function login() {
     return;
   }
 
+  const btn = document.getElementById('loginBtn');
+  const txt = document.getElementById('loginBtnText');
+  const spin = document.getElementById('loginBtnSpinner');
+
   try {
+    btn.disabled = true;
+    txt.textContent = 'กำลังตรวจสอบ...';
+    spin.style.display = 'inline-block';
+    showLoadingToast('กำลังเข้าสู่ระบบ...');
     const res = await gasAPI('login', { username, password });
     if (!res.success) throw new Error(res.error || 'เข้าสู่ระบบไม่สำเร็จ');
     currentUser = res.user;
@@ -58,10 +67,16 @@ async function login() {
     document.getElementById('sessionUser').textContent = currentUser.username;
     document.getElementById('sessionRole').textContent = currentUser.isAdmin ? 'Admin' : currentUser.role;
     document.getElementById('sessionBadge').style.display = 'inline-flex';
+    btn.disabled = false;
+    txt.textContent = 'เข้าสู่ระบบ';
+    spin.style.display = 'none';
     showToast('เข้าสู่ระบบสำเร็จ', 'success');
     refreshSheetIfOpen();
   } catch (e) {
-    showToast(e.message, 'error');
+    btn.disabled = false;
+    txt.textContent = 'เข้าสู่ระบบ';
+    spin.style.display = 'none';
+    showToast(e.message, 'error', 4500);
   }
 }
 
@@ -92,6 +107,7 @@ function fileToBase64(file) {
 }
 
 window.onload = () => {
+  setupKeyboardShortcuts();
   bootstrapApp();
   document.getElementById('loginModal').classList.add('open');
 };

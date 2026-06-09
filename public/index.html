@@ -15,7 +15,6 @@
         <div class="topbar-logo">PEA</div>
         <div>
           <div class="topbar-title">PEA Tracking</div>
-          <div class="topbar-sub">ข้อมูลจากชีต WBS และ workflow O-X</div>
         </div>
       </div>
       <div class="topbar-actions">
@@ -23,8 +22,8 @@
           <span id="sessionUser">-</span>
           <span id="sessionRole">-</span>
         </div>
-        <button class="topbar-btn" onclick="document.getElementById('loginModal').classList.add('open')" title="เข้าสู่ระบบ">เข้า</button>
-        <button class="topbar-btn" onclick="bootstrapApp()" title="รีเฟรช">R</button>
+        <button class="topbar-btn action-pill" onclick="document.getElementById('loginModal').classList.add('open')" title="เข้าสู่ระบบ">🔐</button>
+        <button class="topbar-btn action-pill" onclick="bootstrapApp()" title="รีเฟรชข้อมูล">⟳</button>
       </div>
     </div>
   </div>
@@ -38,13 +37,16 @@
   <div class="page active" id="page-list">
     <div class="page-shell">
       <div class="page-main">
-        <div class="search-wrap">
-          <div class="search-icon">Q</div>
-          <input class="search-input" id="searchInput" placeholder="ค้นหา WBS, คำอธิบาย, ผู้ควบคุมงาน..." oninput="renderList()">
+        <div class="page-toolbar">
+          <div class="search-wrap">
+            <div class="search-icon">⌕</div>
+            <input class="search-input" id="searchInput" placeholder="ค้นหา WBS, คำอธิบาย, ผู้ควบคุมงาน..." oninput="renderList()">
+          </div>
+          <button class="export-btn" onclick="exportListCsv()">Export CSV</button>
         </div>
         <button class="adv-filter-btn" id="advFilterBtn" onclick="toggleFilterPanel()">ตัวกรองเพิ่มเติม</button>
         <div class="filter-panel" id="filterPanel">
-          <div class="filter-panel-hd"><span>กรองข้อมูล</span><span style="font-size:11px;cursor:pointer;color:var(--pea)" onclick="clearAdvFilter()">ล้าง</span></div>
+          <div class="filter-panel-hd"><span>กรองข้อมูล</span><span style="font-size:11px;cursor:pointer;color:var(--gold)" onclick="clearAdvFilter()">ล้าง</span></div>
           <div class="filter-panel-body">
             <div class="filter-group">
               <label>Transformer</label>
@@ -56,11 +58,10 @@
             </div>
           </div>
         </div>
-        <div class="summary-grid">
+        <div class="summary-grid list-summary-grid">
           <div class="stat-card"><div class="num" id="cnt-total">-</div><div class="lbl">งานทั้งหมด</div></div>
           <div class="stat-card"><div class="num" id="cnt-active">-</div><div class="lbl">กำลังดำเนินการ</div></div>
           <div class="stat-card"><div class="num" id="cnt-done">-</div><div class="lbl">ครบทุกขั้นตอน</div></div>
-          <div class="stat-card"><div class="num" id="cnt-today">-</div><div class="lbl">งานเดือนปัจจุบัน</div></div>
         </div>
         <div class="filter-row" id="filterRow"></div>
         <div class="section-hd"><span>รายการงาน</span><span class="count-badge" id="listCount">0 งาน</span></div>
@@ -72,17 +73,29 @@
   <div class="page" id="page-dash">
     <div class="page-shell">
       <div class="page-main">
-        <div class="dash-toolbar">
-          <div class="filter-group">
-            <label>กรองตามสถานะที่ยืนยันแล้ว</label>
-            <select id="dashStepFilter" onchange="renderDash()">
-              <option value="all">ทั้งหมด</option>
-            </select>
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-num" id="dashTotal">-</div><div class="kpi-label">งานทั้งหมด</div></div>
+          <div class="kpi-card"><div class="kpi-num" id="dashDone">-</div><div class="kpi-label">ครบทุกขั้น</div></div>
+          <div class="kpi-card"><div class="kpi-num" id="dashOpen">-</div><div class="kpi-label">กำลังดำเนินการ</div></div>
+        </div>
+        <div class="page-toolbar dash-toolbar-extended">
+          <div class="search-wrap compact-search">
+            <div class="search-icon">⌕</div>
+            <input class="search-input" id="dashSearchInput" placeholder="ค้นหาในแดชบอร์ด..." oninput="renderDash()">
+          </div>
+          <div class="toolbar-actions">
+            <div class="filter-group inline-filter">
+              <label>สถานะที่ยืนยันแล้ว</label>
+              <select id="dashStepFilter" onchange="renderDash()">
+                <option value="all">ทั้งหมด</option>
+              </select>
+            </div>
+            <button class="export-btn" onclick="exportDashCsv()">Export CSV</button>
           </div>
         </div>
         <div class="dash-layout">
-          <div class="dash-card"><div class="dash-card-hd">สถิติแต่ละสถานะ O-X</div><div id="dashStatusList"></div></div>
-          <div class="dash-card"><div class="dash-card-hd">รายการตามตัวกรอง</div><div id="recentList" class="dash-mini-grid"></div></div>
+          <div class="dash-card narrow-stats"><div class="dash-card-hd">สถิติแต่ละสถานะ O-X</div><div id="dashStatusList"></div></div>
+          <div class="dash-card"><div class="dash-card-hd">รายการตามตัวกรอง</div><div id="recentList"></div></div>
         </div>
       </div>
     </div>
@@ -97,38 +110,42 @@
           <div class="kpi-card"><div class="kpi-num" id="kpi-overdue">-</div><div class="kpi-label">งานค้าง</div></div>
           <div class="kpi-card"><div class="kpi-num" id="kpi-this-month">-</div><div class="kpi-label">Transformer PEA</div><div class="kpi-sub" id="kpi-month-label"></div></div>
         </div>
-        <div class="kpi-toolbar">
-          <div class="filter-group">
-            <label>ค้นหา</label>
-            <input id="kpiSearchInput" oninput="renderKPI()">
+        <div class="page-toolbar kpi-toolbar-wrap">
+          <div class="kpi-toolbar">
+            <div class="filter-group">
+              <label>ค้นหา</label>
+              <input id="kpiSearchInput" oninput="renderKPI()">
+            </div>
+            <div class="filter-group">
+              <label>สถานะล่าสุด</label>
+              <select id="kpiStepFilter" onchange="renderKPI()">
+                <option value="all">ทั้งหมด</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Transformer</label>
+              <select id="kpiTransformerFilter" onchange="renderKPI()">
+                <option value="all">ทั้งหมด</option>
+                <option value="PEA">PEA</option>
+                <option value="CUS">CUS</option>
+              </select>
+            </div>
           </div>
-          <div class="filter-group">
-            <label>สถานะล่าสุด</label>
-            <select id="kpiStepFilter" onchange="renderKPI()">
-              <option value="all">ทั้งหมด</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <label>Transformer</label>
-            <select id="kpiTransformerFilter" onchange="renderKPI()">
-              <option value="all">ทั้งหมด</option>
-              <option value="PEA">PEA</option>
-              <option value="CUS">CUS</option>
-            </select>
-          </div>
+          <button class="export-btn" onclick="exportKpiCsv()">Export CSV</button>
         </div>
         <div class="table-card">
           <div class="table-wrap">
             <table class="kpi-table">
               <thead>
                 <tr>
-                  <th>A</th>
-                  <th>C</th>
-                  <th>F</th>
-                  <th>G</th>
-                  <th>H</th>
-                  <th>I</th>
-                  <th>J</th>
+                  <th>ลำดับ</th>
+                  <th>WBS</th>
+                  <th>คำอธิบาย</th>
+                  <th>ผู้ควบคุมงาน</th>
+                  <th>สถานะระบบ</th>
+                  <th>สถานะ</th>
+                  <th>%เบิกพัสดุ</th>
+                  <th>%เบิก ค่าแรง</th>
                   <th>สถานะล่าสุด / ไฟล์ / เวลา</th>
                 </tr>
               </thead>
@@ -160,29 +177,32 @@
   <div class="sheet-body" id="tabLog" style="display:none"><div id="logContent"></div></div>
 </div>
 
-<div class="dialog-backdrop" id="confirmDialog">
-  <div class="dialog-box">
+<div class="dialog-backdrop centered" id="confirmDialog">
+  <div class="dialog-box desktop-modal">
     <div class="dialog-title" id="dlgTitle">ยืนยัน</div>
     <div class="dialog-desc" id="dlgDesc">-</div>
     <div class="dialog-summary" id="dlgSummary"></div>
     <div class="dialog-btns">
       <button class="dialog-btn" onclick="closeConfirm()">ยกเลิก</button>
       <button class="dialog-btn confirm" id="dlgConfirmBtn" onclick="confirmAction()">
-        <span id="dlgConfirmText">ยืนยัน บันทึก</span>
+        <span id="dlgConfirmText">ยืนยันบันทึก</span>
         <div class="spinner" id="dlgSpinner" style="display:inline-block;vertical-align:middle;margin-left:6px"></div>
       </button>
     </div>
   </div>
 </div>
 
-<div class="dialog-backdrop open" id="loginModal">
-  <div class="dialog-box">
+<div class="dialog-backdrop open centered" id="loginModal">
+  <div class="dialog-box desktop-modal">
     <div class="dialog-title">เข้าสู่ระบบ</div>
-    <div class="dialog-desc">สิทธิ์แต่ละ user จะถูกอ่านจากชีต CONFIG</div>
+    <div class="dialog-desc">กำหนดสิทธิ์ตามข้อมูลในชีต CONFIG</div>
     <div class="filter-group" style="margin-bottom:10px"><label>Username</label><input class="form-input" id="loginUser"></div>
     <div class="filter-group"><label>Password</label><input class="form-input" id="loginPass" type="password"></div>
     <div class="dialog-btns" style="margin-top:16px">
-      <button class="dialog-btn confirm" onclick="login()">เข้าสู่ระบบ</button>
+      <button class="dialog-btn confirm" id="loginBtn" onclick="login()">
+        <span id="loginBtnText">เข้าสู่ระบบ</span>
+        <div class="spinner" id="loginBtnSpinner" style="display:none;vertical-align:middle;margin-left:6px"></div>
+      </button>
     </div>
   </div>
 </div>

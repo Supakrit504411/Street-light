@@ -3,23 +3,36 @@ function switchTab(tab, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('page-' + tab).classList.add('active');
+  if (tab === 'dash') renderDash();
   if (tab === 'kpi') renderKPI();
 }
 
 let toastTimer;
-function showToast(msg, type) {
+function showToast(msg, type, duration = 3200) {
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.className = 'toast show ' + (type || '');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = 'toast'; }, 3000);
+  toastTimer = setTimeout(() => { el.className = 'toast'; }, duration);
+}
+
+function showLoadingToast(msg = 'กำลังโหลดข้อมูล...') {
+  const el = document.getElementById('toast');
+  el.innerHTML = `<span class="toast-inline-spinner"></span>${msg}`;
+  el.className = 'toast show loading';
+  clearTimeout(toastTimer);
+}
+
+function hideToast() {
+  const el = document.getElementById('toast');
+  el.className = 'toast';
 }
 
 function openConfirm({ title, desc, summary, onConfirm }) {
   document.getElementById('dlgTitle').textContent = title;
   document.getElementById('dlgDesc').textContent = desc;
   document.getElementById('dlgSummary').innerHTML = summary;
-  document.getElementById('dlgConfirmText').textContent = 'ยืนยัน บันทึก';
+  document.getElementById('dlgConfirmText').textContent = 'ยืนยันบันทึก';
   document.getElementById('dlgSpinner').style.display = 'none';
   document.getElementById('dlgConfirmBtn').disabled = false;
   confirmCallback = onConfirm;
@@ -37,4 +50,34 @@ function confirmAction() {
   document.getElementById('dlgConfirmText').textContent = 'กำลังบันทึก...';
   document.getElementById('dlgSpinner').style.display = 'inline-block';
   confirmCallback();
+}
+
+function setupKeyboardShortcuts() {
+  const loginPass = document.getElementById('loginPass');
+  const loginUser = document.getElementById('loginUser');
+  [loginUser, loginPass].forEach(el => {
+    if (!el) return;
+    el.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        login();
+      }
+    });
+  });
+}
+
+function exportRowsAsCsv(filename, headers, rows) {
+  const escapeCell = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
+  const content = [headers.map(escapeCell).join(',')]
+    .concat(rows.map(row => row.map(escapeCell).join(',')))
+    .join('\n');
+  const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
