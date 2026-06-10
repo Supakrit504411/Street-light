@@ -32,8 +32,9 @@ function switchSheetTab(tab, el) {
 
 function extractDriveId(url) {
   if (!url) return null;
-  const m = url.match(/[-\w]{25,}/);
-  return m ? m[0] : null;
+  // รองรับ https://drive.google.com/file/d/FILE_ID/view
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+  return m ? m[1] : null;
 }
 
 function renderFileLink(url, label = null) {
