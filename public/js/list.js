@@ -87,6 +87,15 @@ function renderList() {
 
 function jobRowHTML(job, index) {
   const latest = job.latestStep;
+  const fileCell = job.latestFileUrl
+    ? `<a href="${job.latestFileUrl}" target="_blank" class="file-link"
+         onmouseenter="showFilePreview(event,'${job.latestFileUrl}')"
+         onmousemove="moveFilePreview(event)"
+         onmouseleave="hideFilePreview()">
+         📎 ดูไฟล์
+       </a>`
+    : '<span class="muted-inline">ไม่มีไฟล์</span>';
+
   return `<tr onclick="openSheet('${job.id}')">
     <td>${index + 1}</td>
     <td>${job.detail.wbs || '-'}</td>
@@ -99,7 +108,7 @@ function jobRowHTML(job, index) {
     <td>
       <div class="kpi-latest-step"><span class="current-step-tag">ล่าสุด</span> ${latest ? latest.label : '-'}</div>
       <div class="kpi-latest-meta">${job.updatedAt || '-'}</div>
-      ${job.latestFileUrl ? `<a href="${job.latestFileUrl}" target="_blank" class="file-link" onmouseenter="showFilePreview(event, '${job.latestFileUrl}')" onmousemove="moveFilePreview(event)" onmouseleave="hideFilePreview()">ไฟล์แนบ</a>` : '<span class="muted-inline">ไม่มีไฟล์</span>'}
+      ${fileCell}
     </td>
   </tr>`;
 }

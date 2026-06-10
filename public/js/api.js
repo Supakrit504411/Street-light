@@ -24,7 +24,6 @@ async function bootstrapApp() {
     populateStepSelects();
     renderList();
     renderDash();
-    renderKPI();
     hideToast();
   } catch (e) {
     showToast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, 'error', 4500);

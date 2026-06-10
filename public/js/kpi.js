@@ -34,16 +34,25 @@ function renderDash() {
 
   document.getElementById('recentList').innerHTML = filteredJobs.length
     ? `<div class="table-wrap"><table class="dash-table">
-      <thead><tr><th>ลำดับ</th><th>WBS</th><th>คำอธิบาย</th><th>ผู้ควบคุมงาน</th><th>สถานะล่าสุด</th><th>เวลา</th></tr></thead>
-      <tbody>${filteredJobs.slice(0, 50).map((job, index) => `
-        <tr onclick="openSheet('${job.id}')">
+      <thead><tr><th>ลำดับ</th><th>WBS</th><th>คำอธิบาย</th><th>ผู้ควบคุมงาน</th><th>สถานะล่าสุด</th><th>ไฟล์แนบ</th><th>เวลา</th></tr></thead>
+      <tbody>${filteredJobs.slice(0, 50).map((job, index) => {
+        const fileHtml = job.latestFileUrl
+          ? `<a href="${job.latestFileUrl}" target="_blank" class="file-link"
+               onclick="event.stopPropagation()"
+               onmouseenter="showFilePreview(event,'${job.latestFileUrl}')"
+               onmousemove="moveFilePreview(event)"
+               onmouseleave="hideFilePreview()">📎 ดูไฟล์</a>`
+          : '<span class="muted-inline">-</span>';
+        return `<tr onclick="openSheet('${job.id}')">
           <td>${index + 1}</td>
           <td>${job.detail.wbs || '-'}</td>
           <td>${job.detail.description || '-'}</td>
           <td>${job.detail.supervisor || '-'}</td>
           <td>${job.latestStep ? job.latestStep.label : '-'}</td>
+          <td>${fileHtml}</td>
           <td>${job.updatedAt || '-'}</td>
-        </tr>`).join('')}</tbody>
+        </tr>`;
+      }).join('')}</tbody>
     </table></div>`
     : '<div style="padding:16px;text-align:center;color:#667085;font-size:13px">ยังไม่มีข้อมูลตามตัวกรอง</div>';
 }

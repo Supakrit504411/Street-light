@@ -30,22 +30,46 @@ function switchSheetTab(tab, el) {
   if (tab === 'log') loadLog();
 }
 
-function renderFileLink(url, label = 'ไฟล์แนบ') {
+function renderFileLink(url, label = null) {
   if (!url) return '<span class="muted-inline">ไม่มีไฟล์</span>';
-  return `<a href="${url}" target="_blank" class="file-link" onmouseenter="showFilePreview(event, '${url}')" onmousemove="moveFilePreview(event)" onmouseleave="hideFilePreview()">${label}</a>`;
+  // ดึงชื่อไฟล์จาก URL หรือใช้ label ที่ส่งมา
+  let displayName = label;
+  if (!displayName) {
+    try {
+      const parts = decodeURIComponent(url).split(/[/?]/);
+      displayName = parts.find(p => p.match(/\.[a-z]{2,5}$/i)) || 'ดูไฟล์';
+    } catch { displayName = 'ดูไฟล์'; }
+  }
+  return `<a href="${url}" target="_blank" class="file-link"
+    onclick="event.stopPropagation()"
+    onmouseenter="showFilePreview(event,'${url}')"
+    onmousemove="moveFilePreview(event)"
+    onmouseleave="hideFilePreview()">📎 ${displayName}</a>`;
 }
 
 function renderStepTab() {
   const job = selectedJob;
   const rows = job.steps.map((step, index) => {
     const canEdit = canEditStep(step, index, job);
-    return `<div class="step-card ${step.value === 'YES' ? 'done' : ''}">
+    // default คือ NO — แสดง YES เฉพาะขั้นที่ผ่านแล้ว
+    const isDone = step.value === 'YES';
+    // ขั้นตอนที่ active คือขั้นแรกที่ยังเป็น NO และขั้นก่อนหน้าทั้งหมด YES
+    const allPrevDone = job.steps.slice(0, index).every(s => s.value === 'YES');
+    const isActive = !isDone && allPrevDone;
+
+    return `<div class="step-card ${isDone ? 'done' : isActive ? 'active-step' : 'pending-step'}">
       <div class="step-card-top">
         <div>
           <div class="step-title">${index + 1}. ${step.label}</div>
-          <div class="step-sub">สถานะ: ${step.value}${step.locked ? ' | ล็อกแล้ว' : ''}</div>
+          <div class="step-sub">
+            <span class="step-value-badge ${isDone ? 'badge-yes' : 'badge-no'}">${isDone ? '✓ YES' : 'NO'}</span>
+            ${step.locked ? '<span class="badge-locked">🔒 ล็อก</span>' : ''}
+          </div>
         </div>
-        <button class="step-inline-btn" ${canEdit ? '' : 'disabled'} onclick="requestStepUpdate('${step.key}')">ยืนยัน YES</button>
+        ${isActive || (isDone && currentUser && currentUser.isAdmin)
+          ? `<button class="step-inline-btn" ${canEdit ? '' : 'disabled'} onclick="event.stopPropagation();requestStepUpdate('${step.key}')">ยืนยัน YES</button>`
+          : isDone ? '' : `<button class="step-inline-btn" disabled>รอขั้นก่อนหน้า</button>`
+        }
       </div>
       <div class="step-link">${renderFileLink(step.fileUrl)}</div>
     </div>`;
@@ -55,7 +79,7 @@ function renderStepTab() {
     <div class="step-form">
       <div class="form-label">หมายเหตุ</div>
       <textarea class="form-textarea" id="step-note" placeholder="บันทึกรายละเอียดการยืนยันขั้นตอน"></textarea>
-      <div class="form-label">ไฟล์แนบ (บังคับเมื่อยืนยัน YES)</div>
+      <div class="form-label" style="margin-top:10px">ไฟล์แนบ (บังคับเมื่อยืนยัน YES)</div>
       <div class="upload-area">
         <input type="file" id="step-file" onchange="handleStepFile(event)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
