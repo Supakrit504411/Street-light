@@ -1,6 +1,7 @@
 function renderDash() {
   const selectedStepKey = document.getElementById('dashStepFilter') ? document.getElementById('dashStepFilter').value : 'all';
   const search = (document.getElementById('dashSearchInput') ? document.getElementById('dashSearchInput').value : '').toLowerCase().trim();
+
   const filteredJobs = allJobs.filter(job => {
     if (selectedStepKey !== 'all') {
       const step = job.steps.find(item => item.key === selectedStepKey);
@@ -10,11 +11,11 @@ function renderDash() {
     const hay = [job.detail.wbs, job.detail.description, job.detail.supervisor, job.id].join(' ').toLowerCase();
     return hay.includes(search);
   });
-  const total = filteredJobs.length || 1;
 
+  const total = filteredJobs.length || 1;
   document.getElementById('dashTotal').textContent = filteredJobs.length;
-  document.getElementById('dashDone').textContent = filteredJobs.filter(job => job.isComplete).length;
-  document.getElementById('dashOpen').textContent = filteredJobs.filter(job => !job.isComplete).length;
+  document.getElementById('dashDone').textContent  = filteredJobs.filter(job => job.isComplete).length;
+  document.getElementById('dashOpen').textContent  = filteredJobs.filter(job => !job.isComplete).length;
 
   document.getElementById('dashStatusList').innerHTML = (appMeta.stepConfig || []).map((step, index) => {
     const cnt = filteredJobs.filter(job => {
@@ -34,37 +35,35 @@ function renderDash() {
 
   document.getElementById('recentList').innerHTML = filteredJobs.length
     ? `<div class="table-wrap"><table class="dash-table">
-      <thead><tr><th>ลำดับ</th><th>WBS</th><th>คำอธิบาย</th><th>ผู้ควบคุมงาน</th><th>สถานะล่าสุด</th><th>ไฟล์แนบ</th><th>เวลา</th></tr></thead>
-      <tbody>${filteredJobs.slice(0, 50).map((job, index) => {
-        const fileHtml = job.latestFileUrl
-          ? `<a href="${job.latestFileUrl}" target="_blank" class="file-link"
-               onclick="event.stopPropagation()"
-               onmouseenter="showFilePreview(event,'${job.latestFileUrl}')"
-               onmousemove="moveFilePreview(event)"
-               onmouseleave="hideFilePreview()">📎 ดูไฟล์</a>`
-          : '<span class="muted-inline">-</span>';
-        return `<tr onclick="openSheet('${job.id}')">
-          <td>${index + 1}</td>
-          <td>${job.detail.wbs || '-'}</td>
-          <td>${job.detail.description || '-'}</td>
-          <td>${job.detail.supervisor || '-'}</td>
-          <td>${job.latestStep ? job.latestStep.label : '-'}</td>
-          <td>${fileHtml}</td>
-          <td>${job.updatedAt || '-'}</td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table></div>`
+        <thead><tr><th>ลำดับ</th><th>WBS</th><th>คำอธิบาย</th><th>ผู้ควบคุมงาน</th><th>สถานะล่าสุด</th><th>ไฟล์แนบ</th><th>เวลา</th></tr></thead>
+        <tbody>${filteredJobs.slice(0, 50).map((job, index) => {
+          const m = (job.latestFileUrl || '').match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+          const thumb = m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400` : '';
+          const fileHtml = job.latestFileUrl
+            ? `<a href="${job.latestFileUrl}" target="_blank" class="file-link"
+                onclick="event.stopPropagation()"
+                onmouseenter="showFilePreview(event,'${job.latestFileUrl}','${thumb}')"
+                onmousemove="moveFilePreview(event)"
+                onmouseleave="hideFilePreview()">📎 ดูไฟล์</a>`
+            : '<span class="muted-inline">-</span>';
+          return `<tr onclick="openSheet('${job.id}')">
+            <td>${index + 1}</td>
+            <td>${job.detail.wbs || '-'}</td>
+            <td>${job.detail.description || '-'}</td>
+            <td>${job.detail.supervisor || '-'}</td>
+            <td>${job.latestStep ? job.latestStep.label : '-'}</td>
+            <td>${fileHtml}</td>
+            <td>${job.updatedAt || '-'}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`
     : '<div style="padding:16px;text-align:center;color:#667085;font-size:13px">ยังไม่มีข้อมูลตามตัวกรอง</div>';
 }
 
 function exportDashCsv() {
   const rows = allJobs.map((job, index) => [
-    index + 1,
-    job.detail.wbs,
-    job.detail.description,
-    job.detail.supervisor,
-    job.latestStep ? job.latestStep.label : '-',
-    job.updatedAt || '-'
+    index + 1, job.detail.wbs, job.detail.description, job.detail.supervisor,
+    job.latestStep ? job.latestStep.label : '-', job.updatedAt || '-'
   ]);
-  exportRowsAsCsv('pea-dashboard.csv', ['ลำดับ', 'WBS', 'คำอธิบาย', 'ผู้ควบคุมงาน', 'สถานะล่าสุด', 'เวลา'], rows);
+  exportRowsAsCsv('pea-dashboard.csv', ['ลำดับ','WBS','คำอธิบาย','ผู้ควบคุมงาน','สถานะล่าสุด','เวลา'], rows);
 }
