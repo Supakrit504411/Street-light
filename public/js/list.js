@@ -1,105 +1,284 @@
-// ============================================================
-// list.js — Job list, filter, search, summary
-// แก้ filter หรือ card UI ที่นี่
-// ============================================================
-
-// ── Filter Chips ──
-function setFilter(val, el) {
-  currentFilter = val;
-  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  renderList();
+function getActiveStepKey(job) {
+  // งานที่ยังไม่เริ่มเลย — step แรกคือ active
+  // งานที่กด YES ไปแล้วบางส่วน — step แรกที่ยัง NO คือ active
+  for (let i = 0; i < job.steps.length; i++) {
+    if (job.steps[i].value !== 'YES') return job.steps[i].key;
+  }
+  // ครบทุก step แล้ว
+  return '__complete__';
 }
 
-// ── Advanced Filter Panel ──
-function toggleFilterPanel() {
-  document.getElementById('filterPanel').classList.toggle('open');
-}
+function renderFilterChips() {
+  const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+  const transformerFilter = document.getElementById('f-transformer-filter').value.trim().toUpperCase();
+  const statusFilter = document.getElementById('f-status-filter') ? document.getElementById('f-status-filter').value.trim() : '';
 
-function populateAssigneeDropdown() {
-  const sel     = document.getElementById('f-assignee-filter');
-  const current = sel.value;
-  const names   = [...new Set(allJobs.map(j => j.assignee).filter(Boolean))].sort();
-  sel.innerHTML = '<option value="">— ทั้งหมด —</option>' +
-    names.map(n => `<option value="${n}" ${n === current ? 'selected' : ''}>${n}</option>`).join('');
-}
-
-function clearAdvFilter() {
-  document.getElementById('f-assignee-filter').value = '';
-  document.getElementById('f-date-from').value = '';
-  document.getElementById('f-date-to').value   = '';
-  document.getElementById('advFilterBtn').classList.remove('has-filter');
-  document.getElementById('advFilterLabel').textContent = 'กรอง';
-  renderList();
-}
-
-// parse "dd/MM/yyyy" → Date
-function parseThaiDate(str) {
-  if (!str) return null;
-  const [d, m, y] = str.split('/');
-  return new Date(+y, +m - 1, +d);
-}
-
-// ── Render List ──
-function renderList() {
-  const q         = (document.getElementById('searchInput').value || '').toLowerCase().trim();
-  const assigneeF = document.getElementById('f-assignee-filter').value;
-  const dateFrom  = document.getElementById('f-date-from').value;
-  const dateTo    = document.getElementById('f-date-to').value;
-
-  const hasAdv = assigneeF || dateFrom || dateTo;
-  document.getElementById('advFilterBtn').classList.toggle('has-filter', !!hasAdv);
-  document.getElementById('advFilterLabel').textContent = hasAdv ? 'กรองอยู่ ✕' : 'กรอง';
-
-  const jobs = allJobs.filter(j => {
-    if (currentFilter !== 'all' && j.status !== currentFilter) return false;
-    if (q && !(j.name.toLowerCase().includes(q) || j.id.toLowerCase().includes(q)
-             || j.assignee.toLowerCase().includes(q) || j.phone.includes(q))) return false;
-    if (assigneeF && j.assignee !== assigneeF) return false;
-    const jDate = parseThaiDate(j.date);
-    if (dateFrom && jDate && jDate < new Date(dateFrom)) return false;
-    if (dateTo   && jDate) {
-      const to = new Date(dateTo); to.setHours(23,59,59);
-      if (jDate > to) return false;
-    }
+  const baseJobs = allJobs.filter(job => {
+    const hay = [job.id, job.detail.wbs, job.detail.peaNo, job.detail.description,
+      job.detail.supervisor, job.detail.systemStatus, job.detail.statusText].join(' ').toLowerCase();
+    if (q && !hay.includes(q)) return false;
+    if (transformerFilter && String(job.transformer || '').toUpperCase() !== transformerFilter) return false;
+    if (statusFilter && job.detail.statusText !== statusFilter) return false;
     return true;
   });
 
+  const chips = [{ key: 'all', label: 'ทั้งหมด', count: baseJobs.length }].concat(
+    (appMeta.stepConfig || []).map(step => ({
+      key: step.key,
+      label: step.label,
+      // นับงานที่ active อยู่ที่ step นี้ (ยัง NO และ step ก่อนหน้าทั้งหมด YES แล้ว)
+      count: baseJobs.filter(job => getActiveStepKey(job) === step.key).length
+    }))
+  );
+
+  document.getElementById('filterRow').innerHTML = chips.map(chip =>
+    `<div class="chip ${currentFilter === chip.key ? 'active' : ''}" onclick="setFilter('${chip.key}', this)">
+      <span>${chip.label}</span><strong>${chip.count}</strong>
+    </div>`
+  ).join('');
+}
+
+function getFilteredJobs() {
+  const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+  const transformerFilter = document.getElementById('f-transformer-filter').value.trim().toUpperCase();
+  const statusFilter = document.getElementById('f-status-filter') ? document.getElementById('f-status-filter').value.trim() : '';
+
+  return allJobs.filter(job => {
+    // กรองตาม chip — ใช้ active step ไม่ใช่ YES step
+    if (currentFilter !== 'all') {
+      if (getActiveStepKey(job) !== currentFilter) return false;
+    }
+    const hay = [job.id, job.detail.wbs, job.detail.peaNo, job.detail.description,
+      job.detail.supervisor, job.detail.systemStatus, job.detail.statusText].join(' ').toLowerCase();
+    if (q && !hay.includes(q)) return false;
+    if (transformerFilter && String(job.transformer || '').toUpperCase() !== transformerFilter) return false;
+    if (statusFilter && job.detail.statusText !== statusFilter) return false;
+    return true;
+  });
+}
+
+function populateStatusFilter() {
+  const el = document.getElementById('f-status-filter');
+  if (!el) return;
+  const current = el.value;
+  const values = [...new Set(allJobs.map(j => j.detail.statusText).filter(Boolean))].sort();
+  el.innerHTML = '<option value="">สถานะ (ทั้งหมด)</option>' +
+    values.map(v => `<option value="${v}" ${v === current ? 'selected' : ''}>${v}</option>`).join('');
+}
+
+function formatNumber(value) {
+  const num = Number(value);
+  if (Number.isNaN(num)) return value || '-';
+  return num.toFixed(2).replace(/\.00$/, '');
+}
+
+function setFilter(val, el) {
+  currentFilter = val;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderList();
+}
+
+function renderList() {
+  populateStatusFilter();
+  const jobs = getFilteredJobs();
+  updateSummary(jobs);
+  renderFilterChips();
   document.getElementById('listCount').textContent = jobs.length + ' งาน';
-  const el = document.getElementById('jobList');
-  el.innerHTML = jobs.length ? jobs.map(jobCardHTML).join('') :
-    `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg><p>ไม่พบรายการงาน</p></div>`;
+  document.getElementById('jobList').innerHTML = jobs.length
+    ? jobs.map((job, index) => jobRowHTML(job, index)).join('')
+    : '<tr><td colspan="10" class="kpi-empty">ไม่พบรายการงาน</td></tr>';
 }
 
-function jobCardHTML(j) {
-  const si   = STATUSES.indexOf(j.status);
-  const sc   = si >= 0 ? STATUS_CLASS[si] : 's0';
-  const bars = STATUSES.map((_,i) =>
-    `<div class="prog-seg ${i<si?'done':i===si?'active':''}"></div>`).join('');
-  const lbls = STATUSES.map((s,i) => {
-    const sh = s.replace('ติดตั้ง','').replace('ตรวจมาตรฐาน','ตรวจ');
-    return `<div class="prog-lbl ${i<si?'done':i===si?'active':''}">${sh}</div>`;
-  }).join('');
-  return `<div class="job-card" onclick="openSheet('${j.id}')">
-    <div class="job-header">
-      <div><div class="job-id">${j.id}</div><div class="job-name">${j.name}</div></div>
-      <span class="status-badge ${sc}">${j.status}</span>
-    </div>
-    <div class="job-meta">
-      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.27 12 19.79 19.79 0 0 1 1.11 3.41 2 2 0 0 1 3.09 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16z"/></svg>${j.phone}</span>
-      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${j.date}</span>
-      ${j.assignee?`<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${j.assignee}</span>`:''}
-    </div>
-    <div><div class="prog-bar">${bars}</div><div class="prog-labels">${lbls}</div></div>
-  </div>`;
+function jobRowHTML(job, index) {
+  const latest = job.latestStep;
+
+  // File cell
+  const fileCell = job.latestFileUrl
+    ? (() => {
+        const m = job.latestFileUrl.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+        const thumb = m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400` : '';
+        return `<a href="${job.latestFileUrl}" target="_blank" class="file-link"
+          onclick="event.stopPropagation()"
+          onmouseenter="showFilePreview(event,'${job.latestFileUrl}','${thumb}')"
+          onmousemove="moveFilePreview(event)"
+          onmouseleave="hideFilePreview()">📎 ดูไฟล์</a>`;
+      })()
+    : '<span class="muted-inline">ไม่มีไฟล์</span>';
+
+  // Nav button — lat/long จาก column AK
+  const latLong = job.latLong || '';
+  const navBtn = latLong
+    ? `<button class="nav-btn" title="นำทาง"
+        onclick="event.stopPropagation();openNavigation('${latLong}')">🧭</button>`
+    : `<button class="nav-btn" disabled title="ไม่มีพิกัด">📍</button>`;
+
+  return `<tr>
+    <td>${index + 1}</td>
+    <td>${job.detail.wbs || '-'}</td>
+    <td>${job.detail.description || '-'}</td>
+    <td>${job.detail.supervisor || '-'}</td>
+    <td>${job.detail.systemStatus || '-'}</td>
+    <td>${job.detail.statusText || '-'}</td>
+    <td>${formatNumber(job.detail.materialPct)}</td>
+    <td>${formatNumber(job.detail.withdrawPct)}</td>
+    <td>
+      <div class="kpi-latest-step"><span class="current-step-tag">ล่าสุด</span> ${latest ? latest.label : '-'}</div>
+      <div class="kpi-latest-meta">${job.updatedAt || '-'}</div>
+      ${fileCell}
+    </td>
+    <td class="action-cell">
+      <button class="update-btn" onclick="openSheet('${job.id}')">อัปเดต</button>
+      ${navBtn}
+    </td>
+  </tr>`;
 }
 
-// ── Summary Counters ──
-function updateSummary() {
-  const today    = new Date();
-  const todayStr = `${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}/${today.getFullYear()}`;
-  document.getElementById('cnt-total').textContent  = allJobs.length;
-  document.getElementById('cnt-active').textContent = allJobs.filter(j => j.status !== 'จ่ายไฟ').length;
-  document.getElementById('cnt-done').textContent   = allJobs.filter(j => j.status === 'จ่ายไฟ').length;
-  document.getElementById('cnt-today').textContent  = allJobs.filter(j => j.date === todayStr).length;
+function openNavigation(latLong) {
+  // รองรับ "lat,long" หรือ "lat long"
+  const cleaned = latLong.replace(/\s+/, ',').trim();
+  window.open(`https://www.google.com/maps/dir/?api=1&destination=${cleaned}`, '_blank');
+}
+
+function updateSummary(jobs = allJobs) {
+  const total  = jobs.length;
+  const done   = jobs.filter(job => job.isComplete).length;
+  const active = total - done;
+  document.getElementById('cnt-total').textContent  = total;
+  document.getElementById('cnt-active').textContent = active;
+  document.getElementById('cnt-done').textContent   = done;
+}
+
+function exportListCsv() {
+  const jobs = getFilteredJobs();
+  exportRowsAsCsv(
+    'pea-list.csv',
+    ['ลำดับ','WBS','คำอธิบาย','ผู้ควบคุมงาน','สถานะระบบ','สถานะ','%เบิกพัสดุ','%เบิกค่าแรง','สถานะล่าสุด','ไฟล์แนบ','เวลา'],
+    jobs.map((job, index) => [
+      index + 1, job.detail.wbs, job.detail.description, job.detail.supervisor,
+      job.detail.systemStatus, job.detail.statusText,
+      formatNumber(job.detail.materialPct), formatNumber(job.detail.withdrawPct),
+      job.latestStep ? job.latestStep.label : '-',
+      job.latestFileUrl || '', job.updatedAt || '-'
+    ])
+  );
+}
+
+function formatNumber(value) {
+  const num = Number(value);
+  if (Number.isNaN(num)) return value || '-';
+  return num.toFixed(2).replace(/\.00$/, '');
+}
+
+function renderFilterChips() {
+  const baseJobs = allJobs.filter(job => {
+    const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+    const transformerFilter = document.getElementById('f-transformer-filter').value.trim().toUpperCase();
+    const hay = [
+      job.id,
+      job.detail.wbs,
+      job.detail.peaNo,
+      job.detail.description,
+      job.detail.supervisor,
+      job.detail.systemStatus,
+      job.detail.statusText
+    ].join(' ').toLowerCase();
+    if (q && !hay.includes(q)) return false;
+    if (transformerFilter && String(job.transformer || '').toUpperCase() !== transformerFilter) return false;
+    return true;
+  });
+
+  const host = document.getElementById('filterRow');
+  const chips = [{ key: 'all', label: 'ทั้งหมด', count: baseJobs.length }].concat(
+    (appMeta.stepConfig || []).map(step => ({
+      key: step.key,
+      label: step.label,
+      count: baseJobs.filter(job => {
+        const found = job.steps.find(item => item.key === step.key);
+        return found && found.value === 'YES';
+      }).length
+    }))
+  );
+
+  host.innerHTML = chips.map(chip =>
+    `<div class="chip ${currentFilter === chip.key ? 'active' : ''}" onclick="setFilter('${chip.key}', this)">
+      <span>${chip.label}</span>
+      <strong>${chip.count}</strong>
+    </div>`
+  ).join('');
+}
+
+function setFilter(val, el) {
+  currentFilter = val;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderList();
+}
+
+function renderList() {
+  const jobs = getFilteredJobs();
+  updateSummary(jobs);
+  renderFilterChips();
+  document.getElementById('listCount').textContent = jobs.length + ' งาน';
+  document.getElementById('jobList').innerHTML = jobs.length
+    ? jobs.map((job, index) => jobRowHTML(job, index)).join('')
+    : '<tr><td colspan="9" class="kpi-empty">ไม่พบรายการงาน</td></tr>';
+}
+
+function jobRowHTML(job, index) {
+  const latest = job.latestStep;
+  const fileCell = job.latestFileUrl
+    ? `<a href="${job.latestFileUrl}" target="_blank" class="file-link"
+         onmouseenter="showFilePreview(event,'${job.latestFileUrl}')"
+         onmousemove="moveFilePreview(event)"
+         onmouseleave="hideFilePreview()">
+         📎 ดูไฟล์
+       </a>`
+    : '<span class="muted-inline">ไม่มีไฟล์</span>';
+
+  return `<tr onclick="openSheet('${job.id}')">
+    <td>${index + 1}</td>
+    <td>${job.detail.wbs || '-'}</td>
+    <td>${job.detail.description || '-'}</td>
+    <td>${job.detail.supervisor || '-'}</td>
+    <td>${job.detail.systemStatus || '-'}</td>
+    <td>${job.detail.statusText || '-'}</td>
+    <td>${formatNumber(job.detail.materialPct)}</td>
+    <td>${formatNumber(job.detail.withdrawPct)}</td>
+    <td>
+      <div class="kpi-latest-step"><span class="current-step-tag">ล่าสุด</span> ${latest ? latest.label : '-'}</div>
+      <div class="kpi-latest-meta">${job.updatedAt || '-'}</div>
+      ${fileCell}
+    </td>
+  </tr>`;
+}
+
+function updateSummary(jobs = allJobs) {
+  const total = jobs.length;
+  const done = jobs.filter(job => job.isComplete).length;
+  const active = total - done;
+  document.getElementById('cnt-total').textContent = total;
+  document.getElementById('cnt-active').textContent = active;
+  document.getElementById('cnt-done').textContent = done;
+}
+
+function exportListCsv() {
+  const jobs = getFilteredJobs();
+  exportRowsAsCsv(
+    'pea-list.csv',
+    ['ลำดับ', 'WBS', 'คำอธิบาย', 'ผู้ควบคุมงาน', 'สถานะระบบ', 'สถานะ', '%เบิกพัสดุ', '%เบิก ค่าแรง', 'สถานะล่าสุด', 'ไฟล์แนบ', 'เวลา'],
+    jobs.map((job, index) => [
+      index + 1,
+      job.detail.wbs,
+      job.detail.description,
+      job.detail.supervisor,
+      job.detail.systemStatus,
+      job.detail.statusText,
+      formatNumber(job.detail.materialPct),
+      formatNumber(job.detail.withdrawPct),
+      job.latestStep ? job.latestStep.label : '-',
+      job.latestFileUrl || '',
+      job.updatedAt || '-'
+    ])
+  );
 }

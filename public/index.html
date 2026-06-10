@@ -2,222 +2,178 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PEA Tracking</title>
-<!-- Config (GAS URL) -->
 <script src="config.js"></script>
-<!-- Styles -->
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div id="app">
-
-  <!-- Topbar -->
   <div class="topbar">
     <div class="topbar-inner">
       <div class="topbar-brand">
         <div class="topbar-logo">PEA</div>
-        <div>
-          <div class="topbar-title">PEA Tracking</div>
-          <div class="topbar-sub">การไฟฟ้าส่วนภูมิภาค</div>
-        </div>
+        <div class="topbar-title">PEA Tracking</div>
       </div>
-      <button class="topbar-btn" onclick="loadData()" title="รีเฟรช">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-      </button>
+      <div class="topbar-actions">
+        <div class="session-badge" id="sessionBadge" style="display:none">
+          <span id="sessionUser">-</span>
+          <span id="sessionRole">-</span>
+        </div>
+        <button class="topbar-btn action-pill" onclick="document.getElementById('loginModal').classList.add('open')" title="เข้าสู่ระบบ">🔐</button>
+        <button class="topbar-btn action-pill" onclick="bootstrapApp()" title="รีเฟรชข้อมูล">⟳</button>
+      </div>
     </div>
   </div>
 
-  <!-- Tab Bar -->
   <div class="tab-bar">
-    <div class="tab-item active" onclick="switchTab('list',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>รายการงาน
-    </div>
-    <div class="tab-item" onclick="switchTab('add',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>เพิ่มงาน
-    </div>
-    <div class="tab-item" onclick="switchTab('dash',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>ภาพรวม
-    </div>
-    <div class="tab-item" onclick="switchTab('kpi',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>KPI
-    </div>
+    <div class="tab-item active" onclick="switchTab('list',this)">รายการงาน</div>
+    <div class="tab-item" onclick="switchTab('dash',this)">แดชบอร์ด</div>
   </div>
 
-  <!-- ═══ PAGE: LIST ═══ -->
   <div class="page active" id="page-list">
-    <div class="search-wrap">
-      <div class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
-      <input class="search-input" id="searchInput" placeholder="ค้นหาชื่อ, เลขงาน, ผู้รับผิดชอบ..." oninput="renderList()">
-    </div>
-    <button class="adv-filter-btn" id="advFilterBtn" onclick="toggleFilterPanel()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-      <span id="advFilterLabel">กรอง</span>
-    </button>
-    <div class="filter-panel" id="filterPanel">
-      <div class="filter-panel-hd"><span>กรองขั้นสูง</span><span style="font-size:11px;cursor:pointer;color:var(--pea)" onclick="clearAdvFilter()">ล้างทั้งหมด</span></div>
-      <div class="filter-panel-body">
-        <div class="filter-group"><label>ผู้รับผิดชอบ</label><select id="f-assignee-filter" onchange="renderList()"><option value="">— ทั้งหมด —</option></select></div>
-        <div class="filter-group"><label>ช่วงวันที่สร้างงาน</label>
-          <div class="filter-date-row">
-            <input type="date" id="f-date-from" onchange="renderList()">
-            <input type="date" id="f-date-to"   onchange="renderList()">
+    <div class="page-shell">
+      <div class="page-main">
+        <div class="summary-grid list-summary-grid">
+          <div class="stat-card"><div class="num" id="cnt-total">-</div><div class="lbl">งานทั้งหมด</div></div>
+          <div class="stat-card"><div class="num" id="cnt-active">-</div><div class="lbl">กำลังดำเนินการ</div></div>
+          <div class="stat-card"><div class="num" id="cnt-done">-</div><div class="lbl">ครบทุกขั้นตอน</div></div>
+        </div>
+
+        <div class="page-toolbar table-toolbar">
+          <div class="search-wrap compact-search">
+            <div class="search-icon">⌕</div>
+            <input class="search-input" id="searchInput" placeholder="ค้นหา WBS, คำอธิบาย, ผู้ควบคุมงาน..." oninput="renderList()">
+          </div>
+          <div class="toolbar-actions">
+            <div class="compact-filter">
+              <label>Transformer</label>
+              <select id="f-transformer-filter" onchange="renderList()">
+                <option value="">ทั้งหมด</option>
+                <option value="PEA">PEA</option>
+                <option value="CUS">CUS</option>
+              </select>
+            </div>
+            <div class="compact-filter">
+              <label>สถานะ (col H)</label>
+              <select id="f-status-filter" onchange="renderList()">
+                <option value="">ทั้งหมด</option>
+              </select>
+            </div>
+            <button class="export-btn small-btn" onclick="exportListCsv()">Export CSV</button>
+          </div>
+        </div>
+
+        <div class="filter-row" id="filterRow"></div>
+        <div class="section-hd"><span>รายการงาน</span><span class="count-badge" id="listCount">0 งาน</span></div>
+
+        <div class="table-card">
+          <div class="table-wrap">
+            <table class="kpi-table">
+              <thead>
+                <tr>
+                  <th>ลำดับ</th>
+                  <th>WBS</th>
+                  <th>คำอธิบาย</th>
+                  <th>ผู้ควบคุมงาน</th>
+                  <th>สถานะระบบ</th>
+                  <th>สถานะ</th>
+                  <th>%เบิกพัสดุ</th>
+                  <th>%เบิก ค่าแรง</th>
+                  <th>สถานะล่าสุด / ไฟล์ / เวลา</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="jobList"></tbody>
+            </table>
           </div>
         </div>
       </div>
     </div>
-    <div class="summary-grid">
-      <div class="stat-card"><div class="num" id="cnt-total">—</div><div class="lbl"><span class="dot" style="background:#888"></span>งานทั้งหมด</div></div>
-      <div class="stat-card"><div class="num" id="cnt-active" style="color:#E65100">—</div><div class="lbl"><span class="dot" style="background:#E65100"></span>กำลังดำเนินการ</div></div>
-      <div class="stat-card"><div class="num" id="cnt-done" style="color:var(--pea)">—</div><div class="lbl"><span class="dot" style="background:var(--pea)"></span>จ่ายไฟแล้ว</div></div>
-      <div class="stat-card"><div class="num" id="cnt-today" style="color:#1565C0">—</div><div class="lbl"><span class="dot" style="background:#1565C0"></span>วันนี้</div></div>
-    </div>
-    <div class="filter-row">
-      <div class="chip active" onclick="setFilter('all',this)">ทั้งหมด</div>
-      <div class="chip" onclick="setFilter('รับคำร้อง',this)">รับคำร้อง</div>
-      <div class="chip" onclick="setFilter('ก่อสร้าง',this)">ก่อสร้าง</div>
-      <div class="chip" onclick="setFilter('เชื่อมระบบ',this)">เชื่อมระบบ</div>
-      <div class="chip" onclick="setFilter('ตรวจมาตรฐาน',this)">ตรวจมาตรฐาน</div>
-      <div class="chip" onclick="setFilter('ติดตั้งมิเตอร์',this)">ติดตั้งมิเตอร์</div>
-      <div class="chip" onclick="setFilter('จ่ายไฟ',this)">จ่ายไฟ</div>
-    </div>
-    <div class="section-hd"><span>รายการงาน</span><span class="count-badge" id="listCount">0 งาน</span></div>
-    <div class="job-list" id="jobList">
-      <div style="background:#fff;border-radius:14px;padding:14px;border:1px solid rgba(0,0,0,.08)">
-        <div class="skeleton" style="height:12px;width:40%;margin-bottom:8px"></div>
-        <div class="skeleton" style="height:16px;width:65%;margin-bottom:10px"></div>
-        <div class="skeleton" style="height:3px;width:100%"></div>
-      </div>
-    </div>
   </div>
 
-  <!-- ═══ PAGE: ADD ═══ -->
-  <div class="page" id="page-add">
-    <div class="form-page">
-      <div class="form-section">
-        <div class="form-section-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>ข้อมูลผู้ขอ</div>
-        <div class="form-row"><div class="form-label">ชื่อ-นามสกุล <span class="req">*</span></div><input class="form-input" id="f-name" placeholder="เช่น นายสมชาย ใจดี"></div>
-        <div class="form-row"><div class="form-label">เบอร์โทรศัพท์ <span class="req">*</span></div><input class="form-input" id="f-phone" type="tel" placeholder="0XX-XXX-XXXX"></div>
-      </div>
-      <div class="form-section">
-        <div class="form-section-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>รายละเอียดงาน</div>
-        <div class="form-row"><div class="form-label">รายละเอียด <span class="req">*</span></div><textarea class="form-textarea" id="f-detail" placeholder="อธิบายงานที่ต้องทำ..."></textarea></div>
-        <div class="form-row"><div class="form-label">ผู้รับผิดชอบ</div><input class="form-input" id="f-assignee" placeholder="ชื่อช่าง / เจ้าหน้าที่"></div>
-        <div class="form-row"><div class="form-label">หมายเหตุ</div><input class="form-input" id="f-note" placeholder="ข้อมูลเพิ่มเติม"></div>
-      </div>
-      <div class="form-section">
-        <div class="form-section-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>รูปภาพ</div>
-        <div class="form-row">
-          <div class="upload-area"><input type="file" accept="image/*" capture="environment" id="imgInput" onchange="handleFileSelect(event,'img')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><div>แตะเพื่อถ่ายภาพ / เลือกรูป</div></div>
-          <div class="upload-preview" id="imgPreview"></div>
-        </div>
-      </div>
-      <div class="form-section">
-        <div class="form-section-hd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>ไฟล์แนบ (PDF)</div>
-        <div class="form-row">
-          <div class="upload-area"><input type="file" accept=".pdf,.doc,.docx" id="pdfInput" onchange="handleFileSelect(event,'pdf')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><div>แตะเพื่อเลือกไฟล์</div></div>
-          <div class="upload-preview" id="pdfPreview"></div>
-        </div>
-      </div>
-      <button class="submit-btn" id="submitBtn" onclick="submitJob()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        <span id="submitText">บันทึกงานใหม่</span>
-        <div class="spinner" id="submitSpinner"></div>
-      </button>
-    </div>
-  </div>
-
-  <!-- ═══ PAGE: DASHBOARD ═══ -->
   <div class="page" id="page-dash">
-    <div class="dash-page">
-      <div class="dash-card"><div class="dash-card-hd">สถานะงานทั้งหมด</div><div id="dashStatusList"></div></div>
-      <div class="dash-card"><div class="dash-card-hd">งานล่าสุด</div><div id="recentList"></div></div>
+    <div class="page-shell">
+      <div class="page-main">
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-num" id="dashTotal">-</div><div class="kpi-label">งานทั้งหมด</div></div>
+          <div class="kpi-card"><div class="kpi-num" id="dashDone">-</div><div class="kpi-label">ครบทุกขั้น</div></div>
+          <div class="kpi-card"><div class="kpi-num" id="dashOpen">-</div><div class="kpi-label">กำลังดำเนินการ</div></div>
+        </div>
+        <div class="page-toolbar dash-toolbar-extended">
+          <div class="search-wrap compact-search">
+            <div class="search-icon">⌕</div>
+            <input class="search-input" id="dashSearchInput" placeholder="ค้นหาในแดชบอร์ด..." oninput="renderDash()">
+          </div>
+          <div class="toolbar-actions">
+            <div class="filter-group inline-filter">
+              <label>สถานะที่ยืนยันแล้ว</label>
+              <select id="dashStepFilter" onchange="renderDash()">
+                <option value="all">ทั้งหมด</option>
+              </select>
+            </div>
+            <button class="export-btn small-btn" onclick="exportDashCsv()">Export CSV</button>
+          </div>
+        </div>
+        <div class="dash-layout">
+          <div class="dash-card narrow-stats"><div class="dash-card-hd">สถิติแต่ละสถานะ</div><div id="dashStatusList"></div></div>
+          <div class="dash-card"><div class="dash-card-hd">รายการตามตัวกรอง</div><div id="recentList"></div></div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- ═══ PAGE: KPI ═══ -->
-  <div class="page" id="page-kpi">
-    <div class="dash-page">
-      <div class="kpi-grid">
-        <div class="kpi-card"><div class="kpi-num" id="kpi-total">—</div><div class="kpi-label">งานทั้งหมด</div></div>
-        <div class="kpi-card"><div class="kpi-num" id="kpi-done" style="color:var(--pea)">—</div><div class="kpi-label">จ่ายไฟแล้ว</div><div class="kpi-sub" id="kpi-done-pct" style="color:var(--pea)"></div></div>
-        <div class="kpi-card"><div class="kpi-num" id="kpi-overdue" style="color:#c62828">—</div><div class="kpi-label">ค้างเกิน 7 วัน</div><div class="kpi-sub" style="color:#c62828">ต้องเร่งดำเนินการ</div></div>
-        <div class="kpi-card"><div class="kpi-num" id="kpi-this-month" style="color:#1565C0">—</div><div class="kpi-label">งานเดือนนี้</div><div class="kpi-sub" id="kpi-month-label" style="color:#1565C0"></div></div>
-      </div>
-      <div class="dash-card">
-        <div class="dash-card-hd" style="display:flex;justify-content:space-between;align-items:center"><span>งานค้าง (เกิน 7 วัน)</span><span id="overdue-badge" class="count-badge">0</span></div>
-        <div class="overdue-list" id="overdueList"></div>
-      </div>
-      <div class="dash-card"><div class="dash-card-hd">Performance ของช่าง</div><div id="assigneeList"></div></div>
-    </div>
-  </div>
+  <div class="footer">PEA Tracking Production Flow</div>
+</div>
 
-  <!-- Footer -->
-  <div class="footer">
-    Develop by นายศุภกฤษ ทะวัง<br>ชผ.บส.กฟจ.นครพนม
-  </div>
-
-</div><!-- #app -->
-
-<!-- ═══ Bottom Sheet ═══ -->
 <div class="sheet-backdrop" id="backdrop" onclick="closeSheet()"></div>
 <div class="bottom-sheet" id="jobSheet">
   <div class="sheet-handle"></div>
   <div class="sheet-header">
-    <div class="sheet-title" id="sheetName">—</div>
-    <div class="sheet-subtitle" id="sheetSub">—</div>
+    <div class="sheet-title" id="sheetName">-</div>
+    <div class="sheet-subtitle" id="sheetSub">-</div>
     <div class="sheet-tabs">
-      <div class="sheet-tab active" onclick="switchSheetTab('detail',this)">รายละเอียด</div>
-      <div class="sheet-tab" onclick="switchSheetTab('step',this)">เปลี่ยนสถานะ</div>
+      <div class="sheet-tab active" onclick="switchSheetTab('step',this)">อัปเดตขั้นตอน</div>
       <div class="sheet-tab" onclick="switchSheetTab('log',this)">ประวัติ</div>
     </div>
   </div>
-  <div class="sheet-body" id="tabDetail"></div>
-  <div class="sheet-body" id="tabStep" style="display:none">
-    <div class="step-form">
-      <div class="form-label">ผู้รับผิดชอบ (สำหรับขั้นตอนนี้)</div>
-      <input class="form-input" id="step-assignee" placeholder="ชื่อช่าง / เจ้าหน้าที่">
-      <div class="form-label" style="margin-top:4px">หมายเหตุ</div>
-      <textarea class="form-textarea" id="step-note" placeholder="บันทึกการดำเนินการ..."></textarea>
-      <div class="form-label" style="margin-top:4px">ไฟล์แนบ (บังคับ)</div>
-      <div class="upload-area" style="margin-bottom:8px">
-        <input type="file" id="step-file" onchange="handleStepFile(event)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:24px;height:24px;margin:0 auto 4px;display:block;opacity:.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <div style="font-size:12px">แตะเพื่อแนบไฟล์</div>
-      </div>
-      <div id="step-file-preview" class="upload-preview" style="margin-bottom:12px"></div>
-    </div>
-  </div>
-  <div class="sheet-body" id="tabLog" style="display:none">
-    <div id="logContent"></div>
-  </div>
-  <div class="step-btn-row" id="stepBtnRow" style="display:none">
-    <button class="step-btn" id="btnPrev" onclick="requestChangeStatus(-1)">← ย้อนกลับ</button>
-    <button class="step-btn primary" id="btnNext" onclick="requestChangeStatus(1)">ขั้นถัดไป →</button>
-  </div>
+  <div class="sheet-body" id="tabStep"></div>
+  <div class="sheet-body" id="tabLog" style="display:none"><div id="logContent"></div></div>
 </div>
 
-<!-- ═══ Confirm Dialog ═══ -->
-<div class="dialog-backdrop" id="confirmDialog">
-  <div class="dialog-box">
-    <div class="dialog-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg></div>
-    <div class="dialog-title" id="dlgTitle">ยืนยันการบันทึก</div>
-    <div class="dialog-desc"  id="dlgDesc">คุณต้องการบันทึกการเปลี่ยนแปลงนี้?</div>
+<div class="dialog-backdrop centered" id="confirmDialog">
+  <div class="dialog-box desktop-modal">
+    <div class="dialog-title" id="dlgTitle">ยืนยัน</div>
+    <div class="dialog-desc" id="dlgDesc">-</div>
     <div class="dialog-summary" id="dlgSummary"></div>
     <div class="dialog-btns">
       <button class="dialog-btn" onclick="closeConfirm()">ยกเลิก</button>
       <button class="dialog-btn confirm" id="dlgConfirmBtn" onclick="confirmAction()">
-        <span id="dlgConfirmText">ยืนยัน บันทึก</span>
+        <span id="dlgConfirmText">ยืนยันบันทึก</span>
         <div class="spinner" id="dlgSpinner" style="display:inline-block;vertical-align:middle;margin-left:6px"></div>
       </button>
     </div>
   </div>
 </div>
 
-<!-- Toast -->
-<div class="toast" id="toast"></div>
+<div class="dialog-backdrop open centered" id="loginModal">
+  <div class="dialog-box desktop-modal">
+    <div class="dialog-title">เข้าสู่ระบบ</div>
+    <div class="dialog-desc">กำหนดสิทธิ์ตามข้อมูลในชีต CONFIG</div>
+    <div class="filter-group" style="margin-bottom:10px"><label>Username</label><input class="form-input" id="loginUser"></div>
+    <div class="filter-group"><label>Password</label><input class="form-input" id="loginPass" type="password"></div>
+    <div class="dialog-btns" style="margin-top:16px">
+      <button class="dialog-btn confirm" id="loginBtn" onclick="login()">
+        <span id="loginBtnText">เข้าสู่ระบบ</span>
+        <div class="spinner" id="loginBtnSpinner" style="display:none;vertical-align:middle;margin-left:6px"></div>
+      </button>
+    </div>
+  </div>
+</div>
 
-<!-- ═══ JavaScript — โหลดตามลำดับ ═══ -->
+<div class="toast" id="toast"></div>
+<div class="file-hover-preview" id="fileHoverPreview"></div>
+
 <script src="js/state.js"></script>
 <script src="js/api.js"></script>
 <script src="js/ui.js"></script>
@@ -225,6 +181,5 @@
 <script src="js/form.js"></script>
 <script src="js/sheet.js"></script>
 <script src="js/kpi.js"></script>
-
 </body>
 </html>
