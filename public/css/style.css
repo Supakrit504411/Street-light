@@ -197,20 +197,24 @@ a { color:var(--accent); text-decoration:none; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
 .footer { text-align:center; padding:18px; font-size:11px; color:#8b95a7; border-top:1px solid #e6ebf2; background:transparent; margin-top:auto; }
-.file-link { position:relative; }
+.file-link { color:var(--accent); font-size:12px; }
 .file-hover-preview {
   position:fixed;
   z-index:400;
   pointer-events:none;
   display:none;
-  width:320px;
+  width:340px;
+  /* ตรงกลางจอเสมอ */
+  top:50% !important;
+  left:50% !important;
+  transform:translate(-50%, -50%);
 }
 .file-hover-preview.open { display:block; }
 .file-hover-card {
   background:#fff;
   border:1px solid var(--line);
   border-radius:14px;
-  box-shadow:var(--shadow);
+  box-shadow:0 20px 48px rgba(15,23,42,.18);
   overflow:hidden;
 }
 .file-hover-title {
@@ -227,6 +231,23 @@ a { color:var(--accent); text-decoration:none; }
   border:none;
   background:#fff;
 }
+
+/* Action buttons in table */
+.action-cell { white-space:nowrap; }
+.update-btn {
+  padding:5px 10px; border-radius:8px; border:none; cursor:pointer;
+  background:linear-gradient(135deg, var(--gold-2), var(--gold));
+  color:#594108; font-size:11px; font-weight:700; font-family:inherit;
+  margin-right:4px;
+}
+.update-btn:hover { opacity:.85; }
+.nav-btn {
+  padding:5px 8px; border-radius:8px; border:1px solid var(--line);
+  background:var(--panel); cursor:pointer; font-size:13px;
+}
+.nav-btn:disabled { opacity:.35; cursor:not-allowed; }
+.nav-btn:not(:disabled):hover { background:#eef4fb; }
+.step-done-label { font-size:11px; color:var(--success); font-weight:700; }
 
 @media (max-width: 900px) {
   #app { max-width:480px; }

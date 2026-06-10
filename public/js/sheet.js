@@ -30,9 +30,14 @@ function switchSheetTab(tab, el) {
   if (tab === 'log') loadLog();
 }
 
+function extractDriveId(url) {
+  if (!url) return null;
+  const m = url.match(/[-\w]{25,}/);
+  return m ? m[0] : null;
+}
+
 function renderFileLink(url, label = null) {
   if (!url) return '<span class="muted-inline">ไม่มีไฟล์</span>';
-  // ดึงชื่อไฟล์จาก URL หรือใช้ label ที่ส่งมา
   let displayName = label;
   if (!displayName) {
     try {
@@ -40,22 +45,38 @@ function renderFileLink(url, label = null) {
       displayName = parts.find(p => p.match(/\.[a-z]{2,5}$/i)) || 'ดูไฟล์';
     } catch { displayName = 'ดูไฟล์'; }
   }
+  const fileId = extractDriveId(url);
+  const thumbUrl = fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w400` : null;
+  const dataThumb = thumbUrl ? `data-thumb="${thumbUrl}"` : '';
   return `<a href="${url}" target="_blank" class="file-link"
     onclick="event.stopPropagation()"
-    onmouseenter="showFilePreview(event,'${url}')"
+    onmouseenter="showFilePreview(event,'${url}','${thumbUrl || ''}')"
     onmousemove="moveFilePreview(event)"
-    onmouseleave="hideFilePreview()">📎 ${displayName}</a>`;
+    onmouseleave="hideFilePreview()"
+    ${dataThumb}>📎 ${displayName}</a>`;
 }
 
 function renderStepTab() {
   const job = selectedJob;
+
+  // หา index ของ step แรกที่ยังเป็น NO = active step
+  const activeIndex = job.steps.findIndex(s => s.value !== 'YES');
+
   const rows = job.steps.map((step, index) => {
-    const canEdit = canEditStep(step, index, job);
-    // default คือ NO — แสดง YES เฉพาะขั้นที่ผ่านแล้ว
-    const isDone = step.value === 'YES';
-    // ขั้นตอนที่ active คือขั้นแรกที่ยังเป็น NO และขั้นก่อนหน้าทั้งหมด YES
-    const allPrevDone = job.steps.slice(0, index).every(s => s.value === 'YES');
-    const isActive = !isDone && allPrevDone;
+    const isDone    = step.value === 'YES';
+    const isActive  = index === activeIndex;
+    const isPending = !isDone && !isActive;
+    const canEdit   = canEditStep(step, index, job);
+
+    let btnHtml = '';
+    if (isDone) {
+      btnHtml = `<span class="step-done-label">✓ ยืนยันแล้ว</span>`;
+    } else if (isActive) {
+      btnHtml = `<button class="step-inline-btn" ${canEdit ? '' : 'disabled'}
+        onclick="event.stopPropagation();requestStepUpdate('${step.key}')">ยืนยัน YES</button>`;
+    } else {
+      btnHtml = `<button class="step-inline-btn" disabled>รอขั้นก่อนหน้า</button>`;
+    }
 
     return `<div class="step-card ${isDone ? 'done' : isActive ? 'active-step' : 'pending-step'}">
       <div class="step-card-top">
@@ -63,13 +84,10 @@ function renderStepTab() {
           <div class="step-title">${index + 1}. ${step.label}</div>
           <div class="step-sub">
             <span class="step-value-badge ${isDone ? 'badge-yes' : 'badge-no'}">${isDone ? '✓ YES' : 'NO'}</span>
-            ${step.locked ? '<span class="badge-locked">🔒 ล็อก</span>' : ''}
+            ${step.locked && !isDone ? '<span class="badge-locked">🔒</span>' : ''}
           </div>
         </div>
-        ${isActive || (isDone && currentUser && currentUser.isAdmin)
-          ? `<button class="step-inline-btn" ${canEdit ? '' : 'disabled'} onclick="event.stopPropagation();requestStepUpdate('${step.key}')">ยืนยัน YES</button>`
-          : isDone ? '' : `<button class="step-inline-btn" disabled>รอขั้นก่อนหน้า</button>`
-        }
+        ${btnHtml}
       </div>
       <div class="step-link">${renderFileLink(step.fileUrl)}</div>
     </div>`;
@@ -190,12 +208,20 @@ function renderLog(logs) {
   `).join('') + `</div>`;
 }
 
-function showFilePreview(event, url) {
+function showFilePreview(event, url, thumbUrl) {
   const preview = document.getElementById('fileHoverPreview');
   if (!preview || !url) return;
+  const imgSrc = thumbUrl || '';
   preview.innerHTML = `<div class="file-hover-card">
-    <div class="file-hover-title">Preview ไฟล์แนบ</div>
-    <iframe src="${url}" loading="lazy"></iframe>
+    <div class="file-hover-title">📎 ไฟล์แนบ</div>
+    ${imgSrc
+      ? `<img src="${imgSrc}" alt="preview" style="width:100%;max-height:220px;object-fit:contain;background:#f8fafc;display:block;"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='block'">`
+      : ''}
+    <div style="${imgSrc ? 'display:none;' : ''}padding:16px;text-align:center;font-size:12px;color:#667085">
+      ไม่สามารถแสดง preview ได้<br>
+      <a href="${url}" target="_blank" style="color:#365f91">คลิกเพื่อเปิดไฟล์ ↗</a>
+    </div>
   </div>`;
   preview.classList.add('open');
   moveFilePreview(event);

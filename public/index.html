@@ -54,6 +54,12 @@
                 <option value="CUS">CUS</option>
               </select>
             </div>
+            <div class="compact-filter">
+              <label>สถานะ (col H)</label>
+              <select id="f-status-filter" onchange="renderList()">
+                <option value="">ทั้งหมด</option>
+              </select>
+            </div>
             <button class="export-btn small-btn" onclick="exportListCsv()">Export CSV</button>
           </div>
         </div>
@@ -75,6 +81,7 @@
                   <th>%เบิกพัสดุ</th>
                   <th>%เบิก ค่าแรง</th>
                   <th>สถานะล่าสุด / ไฟล์ / เวลา</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="jobList"></tbody>
