@@ -1,18 +1,55 @@
+function getActiveStepKey(job) {
+  // งานที่ยังไม่เริ่มเลย — step แรกคือ active
+  // งานที่กด YES ไปแล้วบางส่วน — step แรกที่ยัง NO คือ active
+  for (let i = 0; i < job.steps.length; i++) {
+    if (job.steps[i].value !== 'YES') return job.steps[i].key;
+  }
+  // ครบทุก step แล้ว
+  return '__complete__';
+}
+
+function renderFilterChips() {
+  const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+  const transformerFilter = document.getElementById('f-transformer-filter').value.trim().toUpperCase();
+  const statusFilter = document.getElementById('f-status-filter') ? document.getElementById('f-status-filter').value.trim() : '';
+
+  const baseJobs = allJobs.filter(job => {
+    const hay = [job.id, job.detail.wbs, job.detail.peaNo, job.detail.description,
+      job.detail.supervisor, job.detail.systemStatus, job.detail.statusText].join(' ').toLowerCase();
+    if (q && !hay.includes(q)) return false;
+    if (transformerFilter && String(job.transformer || '').toUpperCase() !== transformerFilter) return false;
+    if (statusFilter && job.detail.statusText !== statusFilter) return false;
+    return true;
+  });
+
+  const chips = [{ key: 'all', label: 'ทั้งหมด', count: baseJobs.length }].concat(
+    (appMeta.stepConfig || []).map(step => ({
+      key: step.key,
+      label: step.label,
+      // นับงานที่ active อยู่ที่ step นี้ (ยัง NO และ step ก่อนหน้าทั้งหมด YES แล้ว)
+      count: baseJobs.filter(job => getActiveStepKey(job) === step.key).length
+    }))
+  );
+
+  document.getElementById('filterRow').innerHTML = chips.map(chip =>
+    `<div class="chip ${currentFilter === chip.key ? 'active' : ''}" onclick="setFilter('${chip.key}', this)">
+      <span>${chip.label}</span><strong>${chip.count}</strong>
+    </div>`
+  ).join('');
+}
+
 function getFilteredJobs() {
   const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
   const transformerFilter = document.getElementById('f-transformer-filter').value.trim().toUpperCase();
   const statusFilter = document.getElementById('f-status-filter') ? document.getElementById('f-status-filter').value.trim() : '';
 
   return allJobs.filter(job => {
+    // กรองตาม chip — ใช้ active step ไม่ใช่ YES step
     if (currentFilter !== 'all') {
-      const step = job.steps.find(item => item.key === currentFilter);
-      if (!step || step.value !== 'YES') return false;
+      if (getActiveStepKey(job) !== currentFilter) return false;
     }
-    const hay = [
-      job.id, job.detail.wbs, job.detail.peaNo,
-      job.detail.description, job.detail.supervisor,
-      job.detail.systemStatus, job.detail.statusText
-    ].join(' ').toLowerCase();
+    const hay = [job.id, job.detail.wbs, job.detail.peaNo, job.detail.description,
+      job.detail.supervisor, job.detail.systemStatus, job.detail.statusText].join(' ').toLowerCase();
     if (q && !hay.includes(q)) return false;
     if (transformerFilter && String(job.transformer || '').toUpperCase() !== transformerFilter) return false;
     if (statusFilter && job.detail.statusText !== statusFilter) return false;
@@ -33,36 +70,6 @@ function formatNumber(value) {
   const num = Number(value);
   if (Number.isNaN(num)) return value || '-';
   return num.toFixed(2).replace(/\.00$/, '');
-}
-
-function renderFilterChips() {
-  const baseJobs = allJobs.filter(job => {
-    const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
-    const transformerFilter = document.getElementById('f-transformer-filter').value.trim().toUpperCase();
-    const statusFilter = document.getElementById('f-status-filter') ? document.getElementById('f-status-filter').value.trim() : '';
-    const hay = [job.id, job.detail.wbs, job.detail.peaNo, job.detail.description,
-      job.detail.supervisor, job.detail.systemStatus, job.detail.statusText].join(' ').toLowerCase();
-    if (q && !hay.includes(q)) return false;
-    if (transformerFilter && String(job.transformer || '').toUpperCase() !== transformerFilter) return false;
-    if (statusFilter && job.detail.statusText !== statusFilter) return false;
-    return true;
-  });
-
-  const host = document.getElementById('filterRow');
-  const chips = [{ key: 'all', label: 'ทั้งหมด', count: baseJobs.length }].concat(
-    (appMeta.stepConfig || []).map(step => ({
-      key: step.key,
-      label: step.label,
-      count: baseJobs.filter(job => {
-        const found = job.steps.find(item => item.key === step.key);
-        return found && found.value === 'YES';
-      }).length
-    }))
-  );
-  host.innerHTML = chips.map(chip =>
-    `<div class="chip ${currentFilter === chip.key ? 'active' : ''}" onclick="setFilter('${chip.key}', this)">
-      <span>${chip.label}</span><strong>${chip.count}</strong></div>`
-  ).join('');
 }
 
 function setFilter(val, el) {
@@ -89,8 +96,8 @@ function jobRowHTML(job, index) {
   // File cell
   const fileCell = job.latestFileUrl
     ? (() => {
-        const fid = job.latestFileUrl.match(/[-\w]{25,}/);
-        const thumb = fid ? `https://drive.google.com/thumbnail?id=${fid[0]}&sz=w400` : '';
+        const m = job.latestFileUrl.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+        const thumb = m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400` : '';
         return `<a href="${job.latestFileUrl}" target="_blank" class="file-link"
           onclick="event.stopPropagation()"
           onmouseenter="showFilePreview(event,'${job.latestFileUrl}','${thumb}')"
