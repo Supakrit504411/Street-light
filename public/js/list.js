@@ -174,7 +174,7 @@ function renderListTableHead() {
     + sortableTh('\u0e2a\u0e16\u0e32\u0e19\u0e30', 'statusText', listSort, 'sortListBy')
     + sortableTh('%\u0e40\u0e1a\u0e34\u0e01\u0e1e\u0e31\u0e2a\u0e14\u0e38', 'materialPct', listSort, 'sortListBy')
     + sortableTh('%\u0e40\u0e1a\u0e34\u0e01 \u0e04\u0e48\u0e32\u0e41\u0e23\u0e07', 'withdrawPct', listSort, 'sortListBy')
-    + sortableTh('\u0e04\u0e49\u0e32\u0e07\u0e2d\u0e22\u0e39\u0e48\u0e17\u0e35\u0e48 / \u0e44\u0e1f\u0e25\u0e4c / \u0e40\u0e27\u0e25\u0e32', 'pending', listSort, 'sortListBy')
+    + sortableTh('สถานะล่าสุด', 'pending', listSort, 'sortListBy')
     + '<th>Action</th>'
     + '</tr>';
 }
@@ -201,18 +201,63 @@ function renderList() {
 
 function transformerToggleHTML(job) {
   var tf = String(job.transformer || '').toUpperCase();
+  var id = escapeAttr(job.id);
   return '<div class="transformer-toggle" onclick="event.stopPropagation()">'
     + '<label class="tf-opt' + (tf === 'PEA' ? ' active' : '') + '">'
-      + '<input type="radio" name="tf-' + job.id + '" value="PEA"' + (tf === 'PEA' ? ' checked' : '') + ' onchange="setJobTransformer(\'' + job.id + '\',\'PEA\')">'
+      + '<input type="radio" name="tf-' + id + '" value="PEA"' + (tf === 'PEA' ? ' checked' : '') + ' onchange="onTransformerChange(\'' + id + '\',\'PEA\')">'
       + '<span>PEA</span></label>'
     + '<label class="tf-opt' + (tf === 'CUS' ? ' active' : '') + '">'
-      + '<input type="radio" name="tf-' + job.id + '" value="CUS"' + (tf === 'CUS' ? ' checked' : '') + ' onchange="setJobTransformer(\'' + job.id + '\',\'CUS\')">'
+      + '<input type="radio" name="tf-' + id + '" value="CUS"' + (tf === 'CUS' ? ' checked' : '') + ' onchange="onTransformerChange(\'' + id + '\',\'CUS\')">'
       + '<span>CUS</span></label>'
     + '</div>';
 }
 
-async function setJobTransformer(jobId, value) {
+function onTransformerChange(jobId, value) {
   if (!ensureLoggedIn()) { renderList(); return; }
+  var job = allJobs.find(function(j) { return j.id === jobId; });
+  var previous = String(job && job.transformer || '').toUpperCase();
+  if (value === previous) return;
+
+  renderList();
+
+  var wbsLabel = escapeHtml(jobId);
+  var fromLabel = escapeHtml(previous || '-');
+  var toLabel = escapeHtml(value);
+
+  if (typeof Swal === 'undefined') {
+    openConfirm({
+      title: 'เปลี่ยน Transformer?',
+      desc: 'ยืนยันการเปลี่ยนค่า Transformer สำหรับงานนี้',
+      summary: '<div class="dialog-summary-row"><span class="k">WBS</span><span class="v">' + wbsLabel + '</span></div>'
+        + '<div class="dialog-summary-row"><span class="k">จาก</span><span class="v">' + fromLabel + '</span></div>'
+        + '<div class="dialog-summary-row"><span class="k">เป็น</span><span class="v">' + toLabel + '</span></div>',
+      onConfirm: function() {
+        applyJobTransformer(jobId, value);
+      }
+    });
+    return;
+  }
+
+  Swal.fire({
+    title: 'เปลี่ยน Transformer?',
+    html: '<div style="text-align:left;font-size:14px;line-height:1.7">'
+      + '<div><strong>WBS:</strong> ' + wbsLabel + '</div>'
+      + '<div><strong>จาก:</strong> ' + fromLabel + '</div>'
+      + '<div><strong>เป็น:</strong> <span style="color:#1f3a5f;font-weight:700">' + toLabel + '</span></div>'
+      + '</div>',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'ยืนยัน',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#1f3a5f',
+    cancelButtonColor: '#94a3b8',
+    reverseButtons: true
+  }).then(function(result) {
+    if (result.isConfirmed) applyJobTransformer(jobId, value);
+  });
+}
+
+async function applyJobTransformer(jobId, value) {
   try {
     var res = await gasAPI('updateTransformer', { jobId: jobId, transformer: value, auth: currentAuth });
     if (!res.success) throw new Error(res.error || '\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08');
@@ -220,10 +265,16 @@ async function setJobTransformer(jobId, value) {
     if (job) job.transformer = value;
     renderList();
     showToast('\u0e15\u0e31\u0e49\u0e07\u0e04\u0e48\u0e32 Transformer \u0e40\u0e1b\u0e47\u0e19 ' + value, 'success');
+    closeConfirm();
   } catch (e) {
+    closeConfirm();
     showToast(e.message, 'error');
     renderList();
   }
+}
+
+async function setJobTransformer(jobId, value) {
+  onTransformerChange(jobId, value);
 }
 
 function jobRowHTML(job, index) {
@@ -264,7 +315,7 @@ function jobRowHTML(job, index) {
     + '<td>' + formatNumber(job.detail.materialPct) + '</td>'
     + '<td>' + formatNumber(job.detail.withdrawPct) + '</td>'
     + '<td>'
-      + '<div class="kpi-latest-step"><span class="current-step-tag">\u0e04\u0e49\u0e32\u0e07\u0e2d\u0e22\u0e39\u0e48\u0e17\u0e35\u0e48</span> ' + pendingLabel + '</div>'
+      + '<div class="kpi-latest-step">' + pendingLabel + '</div>'
       + '<div class="kpi-latest-meta">' + (job.updatedAt || '-') + '</div>'
       + fileCell
     + '</td>'
