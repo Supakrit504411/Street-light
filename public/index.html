@@ -54,23 +54,33 @@
                 <option value="CUS">CUS</option>
               </select>
             </div>
-            <div class="compact-filter">
+            <div class="compact-filter multi-filter-wrap" id="status-filter-wrap">
               <label>สถานะ (col H)</label>
-              <select id="f-status-filter" onchange="renderList()">
-                <option value="">ทั้งหมด</option>
-              </select>
+              <button type="button" class="multi-filter-btn" id="status-filter-btn" onclick="toggleStatusDropdown(event)">
+                <span id="status-filter-label">ทั้งหมด</span>
+                <span class="multi-filter-caret">▾</span>
+              </button>
+              <div class="multi-filter-dropdown" id="status-filter-dropdown">
+                <div class="multi-filter-actions">
+                  <button type="button" class="multi-filter-clear" onclick="clearStatusFilters(event)">ล้างทั้งหมด</button>
+                </div>
+              </div>
             </div>
             <button class="export-btn small-btn" onclick="exportListCsv()">Export CSV</button>
+            <button class="add-job-btn small-btn" id="addJobBtn" type="button" onclick="openAddJobModal()" style="display:none">+ เพิ่มแฟ้มงาน</button>
           </div>
         </div>
 
         <div class="filter-row" id="filterRow"></div>
-        <div class="section-hd"><span>รายการงาน</span><span class="count-badge" id="listCount">0 งาน</span></div>
+        <div class="section-hd">
+          <span>รายการงาน</span>
+          <span class="count-badge" id="listCount">0 งาน</span>
+        </div>
 
         <div class="table-card">
           <div class="table-wrap">
             <table class="kpi-table">
-              <thead>
+              <thead id="jobListHead">
                 <tr>
                   <th>ลำดับ</th>
                   <th>WBS</th>
@@ -80,7 +90,7 @@
                   <th>สถานะ</th>
                   <th>%เบิกพัสดุ</th>
                   <th>%เบิก ค่าแรง</th>
-                  <th>สถานะล่าสุด / ไฟล์ / เวลา</th>
+                  <th>ค้างอยู่ที่ / ไฟล์ / เวลา</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -141,6 +151,70 @@
   <div class="sheet-body" id="tabLog" style="display:none"><div id="logContent"></div></div>
 </div>
 
+<div class="dialog-backdrop centered" id="stepUpdateModal">
+  <div class="dialog-box desktop-modal step-update-modal">
+    <div class="dialog-title" id="stepModalTitle">ยืนยันขั้นตอน</div>
+    <div class="dialog-desc" id="stepModalDesc">เมื่อยืนยันแล้วจะกลับไปแก้ไม่ได้ ยกเว้น Admin</div>
+    <div class="step-modal-form">
+      <div class="form-label">หมายเหตุ</div>
+      <textarea class="form-textarea" id="stepModalNote" placeholder="บันทึกรายละเอียดการยืนยันขั้นตอน"></textarea>
+      <div id="stepModalLowPowerWrap" class="step-modal-option" style="display:none">
+        <label class="checkbox-row">
+          <input type="checkbox" id="stepModalLowPower" onchange="updateStepModalFileRequired()">
+          <span>งานแรงต่ำ</span>
+        </label>
+        <div class="checkbox-hint">เลือกแล้วยืนยันได้โดยไม่ต้องแนบไฟล์</div>
+      </div>
+      <div id="stepModalFileSection">
+        <div class="form-label" style="margin-top:10px" id="stepModalFileLabel">ไฟล์แนบ (บังคับเมื่อยืนยัน YES)</div>
+        <div class="upload-area">
+          <input type="file" id="stepModalFile" onchange="handleModalStepFile(event)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div>แตะเพื่อแนบไฟล์</div>
+        </div>
+        <div id="stepModalFilePreview" class="upload-preview"></div>
+      </div>
+    </div>
+    <div class="dialog-btns">
+      <button class="dialog-btn" onclick="closeStepUpdateModal()">ยกเลิก</button>
+      <button class="dialog-btn confirm" id="stepModalSubmitBtn" onclick="submitStepUpdateModal()">
+        <span id="stepModalSubmitText">ยืนยัน</span>
+        <div class="spinner" id="stepModalSpinner" style="display:none;vertical-align:middle;margin-left:6px"></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-backdrop centered" id="addJobModal">
+  <div class="dialog-box desktop-modal add-job-modal">
+    <div class="dialog-title">เพิ่มแฟ้มงาน</div>
+    <div class="dialog-desc">กรอก WBS ตามรูปแบบ x-xx-x-xxxxx.xxxx และเลือก Transformer</div>
+    <div class="add-job-form">
+      <div class="form-label">WBS <span class="form-hint">(เช่น C-69-D-NPNSR.1234)</span></div>
+      <input class="form-input wbs-input" id="addJobWbsInput" placeholder="C-69-D-NPNSR.1234" maxlength="17" autocomplete="off" oninput="formatAddJobWbsInput(this)">
+      <div class="wbs-mask-hint">รูปแบบ: <code>x-xx-x-xxxxx.xxxx</code></div>
+      <div class="form-label" style="margin-top:14px">Transformer</div>
+      <div class="transformer-toggle add-job-transformer" id="addJobTransformer">
+        <label class="tf-opt active">
+          <input type="radio" name="addJobTf" value="PEA" checked onchange="syncAddJobTransformerToggle(this)">
+          <span>PEA</span>
+        </label>
+        <label class="tf-opt">
+          <input type="radio" name="addJobTf" value="CUS" onchange="syncAddJobTransformerToggle(this)">
+          <span>CUS</span>
+        </label>
+      </div>
+    </div>
+    <div class="dialog-btns">
+      <button class="dialog-btn" type="button" onclick="closeAddJobModal()">ยกเลิก</button>
+      <button class="dialog-btn confirm" type="button" id="addJobSubmitBtn" onclick="submitAddJob()">
+        <span id="addJobSubmitText">บันทึก</span>
+        <div class="spinner" id="addJobSpinner" style="display:none;vertical-align:middle;margin-left:6px"></div>
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="dialog-backdrop centered" id="confirmDialog">
   <div class="dialog-box desktop-modal">
     <div class="dialog-title" id="dlgTitle">ยืนยัน</div>
@@ -158,8 +232,8 @@
 
 <div class="dialog-backdrop open centered" id="loginModal">
   <div class="dialog-box desktop-modal">
-    <div class="dialog-title">เข้าสู่ระบบ</div>
-    <div class="dialog-desc">กำหนดสิทธิ์ตามข้อมูลในชีต CONFIG</div>
+    <div class="dialog-title">LOG IN</div>
+    <div class="dialog-desc">USER LEVEL</div>
     <div class="filter-group" style="margin-bottom:10px"><label>Username</label><input class="form-input" id="loginUser"></div>
     <div class="filter-group"><label>Password</label><input class="form-input" id="loginPass" type="password"></div>
     <div class="dialog-btns" style="margin-top:16px">

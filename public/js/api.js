@@ -70,6 +70,7 @@ async function login() {
     txt.textContent = 'เข้าสู่ระบบ';
     spin.style.display = 'none';
     showToast('เข้าสู่ระบบสำเร็จ', 'success');
+    updateAddJobButtonVisibility();
     refreshSheetIfOpen();
   } catch (e) {
     btn.disabled = false;
@@ -94,6 +95,11 @@ function refreshSheetIfOpen() {
   renderSheetHeader();
   if (currentSheetTab === 'detail') renderDetailTab();
   if (currentSheetTab === 'step') renderStepTab();
+}
+
+function updateAddJobButtonVisibility() {
+  var btn = document.getElementById('addJobBtn');
+  if (btn) btn.style.display = currentUser ? 'inline-flex' : 'none';
 }
 
 function fileToBase64(file) {

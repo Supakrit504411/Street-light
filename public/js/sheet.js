@@ -3,6 +3,8 @@ function openSheet(jobId) {
   if (!selectedJob) return;
   currentSheetTab = 'step';
   pendingStepFile = null;
+  pendingStepKey = null;
+  closeStepUpdateModal();
   renderSheetHeader();
   switchSheetTab('step', document.querySelectorAll('.sheet-tab')[0]);
   document.getElementById('backdrop').classList.add('open');
@@ -10,6 +12,7 @@ function openSheet(jobId) {
 }
 
 function closeSheet() {
+  closeStepUpdateModal();
   document.getElementById('backdrop').classList.remove('open');
   document.getElementById('jobSheet').classList.remove('open');
 }
@@ -60,29 +63,28 @@ function renderFileLink(url, label = null) {
 function renderStepTab() {
   const job = selectedJob;
 
-  // หา index ของ step แรกที่ยังเป็น NO = active step
+  // step แรกที่ยังเป็น NO = จุดค้างของ workflow (ใช้แสดง highlight เท่านั้น)
   const activeIndex = job.steps.findIndex(s => s.value !== 'YES');
 
   const rows = job.steps.map((step, index) => {
     const isDone    = step.value === 'YES';
-    const isActive  = index === activeIndex;
-    const isPending = !isDone && !isActive;
+    const isBlocked = index === activeIndex;
     const canEdit   = canEditStep(step, index, job);
 
     let btnHtml = '';
     if (isDone) {
       btnHtml = `<span class="step-done-label">✓ ยืนยันแล้ว</span>`;
-    } else if (isActive) {
-      btnHtml = `<button class="step-inline-btn" ${canEdit ? '' : 'disabled'}
-        onclick="event.stopPropagation();requestStepUpdate('${step.key}')">ยืนยัน YES</button>`;
+    } else if (canEdit) {
+      btnHtml = `<button class="step-inline-btn"
+        onclick="event.stopPropagation();openStepUpdateModal('${step.key}')">ยืนยัน</button>`;
     } else {
-      btnHtml = `<button class="step-inline-btn" disabled>รอขั้นก่อนหน้า</button>`;
+      btnHtml = `<button class="step-inline-btn" disabled>ไม่มีสิทธิ์</button>`;
     }
 
-    return `<div class="step-card ${isDone ? 'done' : isActive ? 'active-step' : 'pending-step'}">
+    return `<div class="step-card ${isDone ? 'done' : isBlocked ? 'active-step' : 'pending-step'}">
       <div class="step-card-top">
         <div>
-          <div class="step-title">${index + 1}. ${step.label}</div>
+          <div class="step-title">${index + 1}. ${step.label}${isBlocked && !isDone ? ' <span class="step-block-tag">ค้างอยู่ที่</span>' : ''}</div>
           <div class="step-sub">
             <span class="step-value-badge ${isDone ? 'badge-yes' : 'badge-no'}">${isDone ? '✓ YES' : 'NO'}</span>
             ${step.locked && !isDone ? '<span class="badge-locked">🔒</span>' : ''}
@@ -94,65 +96,101 @@ function renderStepTab() {
     </div>`;
   }).join('');
 
-  document.getElementById('tabStep').innerHTML = `
-    <div class="step-form">
-      <div class="form-label">หมายเหตุ</div>
-      <textarea class="form-textarea" id="step-note" placeholder="บันทึกรายละเอียดการยืนยันขั้นตอน"></textarea>
-      <div class="form-label" style="margin-top:10px">ไฟล์แนบ (บังคับเมื่อยืนยัน YES)</div>
-      <div class="upload-area">
-        <input type="file" id="step-file" onchange="handleStepFile(event)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <div>แตะเพื่อแนบไฟล์</div>
-      </div>
-      <div id="step-file-preview" class="upload-preview"></div>
-      <div class="step-grid">${rows}</div>
-    </div>`;
+  document.getElementById('tabStep').innerHTML = `<div class="step-form"><div class="step-grid">${rows}</div></div>`;
 }
 
-function canEditStep(step, index, job) {
-  if (!currentUser) return false;
-  if (step.locked && !currentUser.isAdmin) return false;
-  if (!(currentUser.isAdmin || currentUser.allowedSteps.includes('ALL') || currentUser.allowedSteps.includes(step.key))) return false;
-  for (let i = 0; i < index; i++) {
-    if (job.steps[i].value !== 'YES') return false;
-  }
-  return step.value !== 'YES' || currentUser.isAdmin;
-}
-
-function requestStepUpdate(stepKey) {
+function openStepUpdateModal(stepKey) {
   if (!ensureLoggedIn()) return;
-  if (!pendingStepFile) {
+  const step = selectedJob.steps.find(item => item.key === stepKey);
+  if (!step) return;
+
+  pendingStepKey = stepKey;
+  pendingStepFile = null;
+
+  document.getElementById('stepModalTitle').textContent = 'ยืนยัน: ' + step.label;
+  document.getElementById('stepModalNote').value = '';
+  document.getElementById('stepModalFile').value = '';
+  document.getElementById('stepModalFilePreview').innerHTML = '';
+
+  const lowPowerWrap = document.getElementById('stepModalLowPowerWrap');
+  const isHotline = stepKey === 'hotlineConnection';
+  if (lowPowerWrap) {
+    lowPowerWrap.style.display = isHotline ? 'block' : 'none';
+    document.getElementById('stepModalLowPower').checked = false;
+  }
+
+  resetStepModalSubmitBtn();
+  updateStepModalFileRequired();
+  document.getElementById('stepUpdateModal').classList.add('open');
+}
+
+function closeStepUpdateModal() {
+  document.getElementById('stepUpdateModal').classList.remove('open');
+  pendingStepKey = null;
+  pendingStepFile = null;
+  resetStepModalSubmitBtn();
+}
+
+function resetStepModalSubmitBtn() {
+  const btn = document.getElementById('stepModalSubmitBtn');
+  const text = document.getElementById('stepModalSubmitText');
+  const spinner = document.getElementById('stepModalSpinner');
+  if (btn) btn.disabled = false;
+  if (text) text.textContent = 'ยืนยัน';
+  if (spinner) spinner.style.display = 'none';
+}
+
+function updateStepModalFileRequired() {
+  const isHotline = pendingStepKey === 'hotlineConnection';
+  const lowPowerEl = document.getElementById('stepModalLowPower');
+  const lowPower = isHotline && lowPowerEl && lowPowerEl.checked;
+  const fileSection = document.getElementById('stepModalFileSection');
+  const fileLabel = document.getElementById('stepModalFileLabel');
+
+  if (lowPower) {
+    if (fileSection) fileSection.style.display = 'none';
+    pendingStepFile = null;
+  } else {
+    if (fileSection) fileSection.style.display = 'block';
+    if (fileLabel) fileLabel.textContent = 'ไฟล์แนบ (บังคับเมื่อยืนยัน YES)';
+  }
+}
+
+function submitStepUpdateModal() {
+  if (!pendingStepKey) return;
+  const isHotline = pendingStepKey === 'hotlineConnection';
+  const lowPowerEl = document.getElementById('stepModalLowPower');
+  const lowPower = isHotline && lowPowerEl && lowPowerEl.checked;
+  const note = document.getElementById('stepModalNote').value.trim();
+
+  if (!lowPower && !pendingStepFile) {
     showToast('กรุณาแนบไฟล์ก่อนยืนยันขั้นตอน', 'error');
     return;
   }
-  const step = selectedJob.steps.find(item => item.key === stepKey);
-  const note = document.getElementById('step-note').value.trim();
-  const summary = [
-    ['งาน', selectedJob.id],
-    ['ขั้นตอน', step.label],
-    ['สถานะใหม่', 'YES'],
-    ['ผู้ใช้', currentUser.username],
-    ['ไฟล์แนบ', pendingStepFile.name]
-  ].map(([k, v]) => `<div class="dialog-summary-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
 
-  openConfirm({
-    title: 'ยืนยันการอัปเดตขั้นตอน',
-    desc: 'เมื่อยืนยันแล้วจะกลับไปแก้ไม่ได้ ยกเว้น Admin',
-    summary,
-    onConfirm: () => doStepUpdate(stepKey, note)
-  });
+  let finalNote = note;
+  if (lowPower) finalNote = (note ? note + ' | ' : '') + 'งานแรงต่ำ';
+
+  document.getElementById('stepModalSubmitBtn').disabled = true;
+  document.getElementById('stepModalSubmitText').textContent = 'กำลังบันทึก...';
+  document.getElementById('stepModalSpinner').style.display = 'inline-block';
+  doStepUpdate(pendingStepKey, finalNote, lowPower);
 }
 
-async function doStepUpdate(stepKey, note) {
+async function doStepUpdate(stepKey, note, lowPowerJob) {
   try {
-    const b64 = await fileToBase64(pendingStepFile);
-    const upload = await gasAPI('uploadFile', {
-      base64Data: b64,
-      fileName: pendingStepFile.name,
-      mimeType: pendingStepFile.type,
-      subFolder: stepKey
-    });
-    if (!upload.success) throw new Error(upload.error || 'อัปโหลดไฟล์ไม่สำเร็จ');
+    let fileUrl = '';
+    if (pendingStepFile) {
+      const b64 = await fileToBase64(pendingStepFile);
+      const upload = await gasAPI('uploadFile', {
+        base64Data: b64,
+        fileName: pendingStepFile.name,
+        mimeType: pendingStepFile.type,
+        subFolder: stepKey
+      });
+      if (!upload.success) throw new Error(upload.error || 'อัปโหลดไฟล์ไม่สำเร็จ');
+      fileUrl = upload.url;
+    }
 
     const res = await gasAPI('updateStep', {
       payload: {
@@ -160,23 +198,32 @@ async function doStepUpdate(stepKey, note) {
         stepKey,
         value: 'YES',
         note,
-        fileUrl: upload.url,
+        fileUrl,
+        lowPowerJob: !!lowPowerJob,
         auth: currentAuth
       }
     });
-    closeConfirm();
+    closeStepUpdateModal();
     if (!res.success) throw new Error(res.error || 'บันทึกไม่สำเร็จ');
 
     await bootstrapApp();
     selectedJob = allJobs.find(job => job.id === selectedJob.id);
     pendingStepFile = null;
+    pendingStepKey = null;
     renderSheetHeader();
     renderStepTab();
     showToast('บันทึกขั้นตอนเรียบร้อย', 'success');
   } catch (e) {
-    closeConfirm();
+    resetStepModalSubmitBtn();
     showToast(e.message, 'error');
   }
+}
+
+function canEditStep(step, index, job) {
+  if (!currentUser) return false;
+  if (step.locked && !currentUser.isAdmin) return false;
+  if (!(currentUser.isAdmin || currentUser.allowedSteps.includes('ALL') || currentUser.allowedSteps.includes(step.key))) return false;
+  return step.value !== 'YES' || currentUser.isAdmin;
 }
 
 async function loadLog() {

@@ -81,3 +81,41 @@ function exportRowsAsCsv(filename, headers, rows) {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+function toggleTableSort(sortState, col) {
+  if (sortState.col === col) sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+  else { sortState.col = col; sortState.dir = 'asc'; }
+}
+
+function sortIndicator(sortState, col) {
+  if (sortState.col !== col) return '<span class="sort-indicator">↕</span>';
+  return sortState.dir === 'asc'
+    ? '<span class="sort-indicator active">↑</span>'
+    : '<span class="sort-indicator active">↓</span>';
+}
+
+function compareSortValues(a, b, dir) {
+  var av = a == null || a === '' ? '' : a;
+  var bv = b == null || b === '' ? '' : b;
+  var numA = parseFloat(av);
+  var numB = parseFloat(bv);
+  if (!isNaN(numA) && !isNaN(numB) && /^-?\d/.test(String(av)) && /^-?\d/.test(String(bv))) {
+    return dir === 'asc' ? numA - numB : numB - numA;
+  }
+  var sa = String(av).toLowerCase();
+  var sb = String(bv).toLowerCase();
+  if (sa < sb) return dir === 'asc' ? -1 : 1;
+  if (sa > sb) return dir === 'asc' ? 1 : -1;
+  return 0;
+}
+
+function sortRows(rows, sortState, getValue) {
+  if (!sortState.col) return rows;
+  return rows.slice().sort(function(a, b) {
+    return compareSortValues(getValue(a, sortState.col), getValue(b, sortState.col), sortState.dir);
+  });
+}
+
+function sortableTh(label, col, sortState, onclickFn) {
+  return '<th class="sortable" onclick="' + onclickFn + '(\'' + col + '\')">' + label + sortIndicator(sortState, col) + '</th>';
+}

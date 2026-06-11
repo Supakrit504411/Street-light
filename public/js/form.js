@@ -2,7 +2,16 @@ function handleStepFile(event) {
   const file = event.target.files[0];
   if (!file) return;
   pendingStepFile = file;
-  document.getElementById('step-file-preview').innerHTML = previewChip(file.name);
+  const preview = document.getElementById('step-file-preview');
+  if (preview) preview.innerHTML = previewChip(file.name);
+}
+
+function handleModalStepFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  pendingStepFile = file;
+  const preview = document.getElementById('stepModalFilePreview');
+  if (preview) preview.innerHTML = previewChip(file.name);
 }
 
 function previewChip(name) {
