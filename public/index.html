@@ -3,9 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PEA Tracking</title>
+<title>WBS Tracking</title>
 <script src="config.js"></script>
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 <div id="app">
@@ -13,7 +15,7 @@
     <div class="topbar-inner">
       <div class="topbar-brand">
         <div class="topbar-logo">PEA</div>
-        <div class="topbar-title">PEA Tracking</div>
+        <div class="topbar-title">WBS Tracking</div>
       </div>
       <div class="topbar-actions">
         <div class="session-badge" id="sessionBadge" style="display:none">
@@ -27,8 +29,14 @@
   </div>
 
   <div class="tab-bar">
-    <div class="tab-item active" onclick="switchTab('list',this)">รายการงาน</div>
-    <div class="tab-item" onclick="switchTab('dash',this)">แดชบอร์ด</div>
+    <div class="tab-item active" onclick="switchTab('list',this)">
+      <span class="tab-icon" aria-hidden="true">📋</span>
+      <span class="tab-label">รายการงาน</span>
+    </div>
+    <div class="tab-item" onclick="switchTab('dash',this)">
+      <span class="tab-icon" aria-hidden="true">📊</span>
+      <span class="tab-label">แดชบอร์ด</span>
+    </div>
   </div>
 
   <div class="page active" id="page-list">
@@ -55,7 +63,7 @@
               </select>
             </div>
             <div class="compact-filter multi-filter-wrap" id="status-filter-wrap">
-              <label>สถานะ (col H)</label>
+              <label>สถานะ </label>
               <button type="button" class="multi-filter-btn" id="status-filter-btn" onclick="toggleStatusDropdown(event)">
                 <span id="status-filter-label">ทั้งหมด</span>
                 <span class="multi-filter-caret">▾</span>
@@ -89,8 +97,8 @@
                   <th>สถานะระบบ</th>
                   <th>สถานะ</th>
                   <th>%เบิกพัสดุ</th>
-                  <th>%เบิก ค่าแรง</th>
-                  <th>ค้างอยู่ที่ / ไฟล์ / เวลา</th>
+                  <th>%เบิกค่าแรง</th>
+                  <th>สถานะล่าสุด</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -133,7 +141,10 @@
     </div>
   </div>
 
-  <div class="footer">PEA Tracking Production Flow</div>
+  <div class="footer">
+    <div class="footer-brand">WBS Tracking · Production Workflow</div>
+    <div class="footer-credit">Developed by Mr. Supakrit Tawang (ศุภกฤษ ทะวัง)· Provincial Electricity Authority, Nakhon Phanom Provincial Office</div>
+  </div>
 </div>
 
 <div class="sheet-backdrop" id="backdrop" onclick="closeSheet()"></div>

@@ -84,7 +84,7 @@ function renderStepTab() {
     return `<div class="step-card ${isDone ? 'done' : isBlocked ? 'active-step' : 'pending-step'}">
       <div class="step-card-top">
         <div>
-          <div class="step-title">${index + 1}. ${step.label}${isBlocked && !isDone ? ' <span class="step-block-tag">ค้างอยู่ที่</span>' : ''}</div>
+          <div class="step-title">${index + 1}. ${step.label}${isBlocked && !isDone ? ' <span class="step-block-tag">ค้าง</span>' : ''}</div>
           <div class="step-sub">
             <span class="step-value-badge ${isDone ? 'badge-yes' : 'badge-no'}">${isDone ? '✓ YES' : 'NO'}</span>
             ${step.locked && !isDone ? '<span class="badge-locked">🔒</span>' : ''}
